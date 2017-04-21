@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ArcGIS defaultAssembly="mpd-pro-addin-cs.dll"
+        defaultNamespace="mpd_pro_addin_cs"
+        xmlns="http://schemas.esri.com/DADF/Registry"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///E:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
+
+  <AddInInfo id="{500ff634-dd1f-4962-8baa-77f8dc37040d}" version="1.0" desktopVersion="1.4.7198">
+    <Name>mpd_pro_addin_cs</Name>   
+    <Description>mpd_pro_addin_cs description</Description>
+    <Image>Images\AddinDesktop32.png</Image>
+    <Author>mark4238</Author>
+    <Company>Acme</Company>
+    <Date>4/21/2017 2:52:34 PM, 2017</Date>
+    <Subject>Framework</Subject>
+    <!-- Note subject can be one or more of these topics:
+                    Content, Framework, Editing, Geodatabase, Geometry, Geoprocessing, Layouts, Map Authoring, Map Exploration -->
+  </AddInInfo>
+
+  <modules>
+    <insertModule id="mpd_pro_addin_cs_Module" className="Module1" autoLoad="false" caption="Module1">
+      <!-- uncomment to have the control hosted on a separate tab-->
+      <tabs>
+        <!--<tab id="mpd_pro_addin_cs_Tab1" caption="New Tab">
+          <group refID="mpd_pro_addin_cs_Group1"/>
+        </tab>-->
+      </tabs>
+              
+      <groups>
+        <!-- comment this out if you have no controls on the Addin tab to avoid
+              an empty group-->
+        <group id="mpd_pro_addin_cs_Group1" caption="Group 1" appearsOnAddInTab="true">
+          <!-- host controls within groups -->
+        </group>
+      </groups>
+      
+      <controls>
+        <!-- add your controls here -->
+      </controls> 
+      
+    </insertModule>
+  </modules>
+</ArcGIS>
