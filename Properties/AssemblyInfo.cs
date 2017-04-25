@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("mpd_pro_addin_cs")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Esri.APL.MilesPerDollar")]
+[assembly: AssemblyDescription("Drive Distance Calculator")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Acme")]
-[assembly: AssemblyProduct("mpd_pro_addin_cs")]
-[assembly: AssemblyCopyright("Copyright © Acme 2017")]
+[assembly: AssemblyCompany("Esri APL")]
+[assembly: AssemblyProduct("Esri.APL>MilesPerDollar")]
+[assembly: AssemblyCopyright("Copyright © Esri Applications Prototype Lab 2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

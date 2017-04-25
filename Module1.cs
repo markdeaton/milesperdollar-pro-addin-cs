@@ -7,7 +7,7 @@ using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using System.Threading.Tasks;
 
-namespace mpd_pro_addin_cs {
+namespace Esri.APL.MilesPerDollar {
     internal class Module1 : Module {
         private static Module1 _this = null;
 

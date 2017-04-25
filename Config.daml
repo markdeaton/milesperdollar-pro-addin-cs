@@ -1,12 +1,9 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<ArcGIS defaultAssembly="mpd-pro-addin-cs.dll"
-        defaultNamespace="mpd_pro_addin_cs"
-        xmlns="http://schemas.esri.com/DADF/Registry"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+﻿<ArcGIS defaultAssembly="Esri.APL.MilesPerDollar.dll" defaultNamespace="Esri.APL.MilesPerDollar" 
+        xmlns="http://schemas.esri.com/DADF/Registry" 
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
         xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///E:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
-
   <AddInInfo id="{500ff634-dd1f-4962-8baa-77f8dc37040d}" version="1.0" desktopVersion="1.4.7198">
-    <Name>mpd_pro_addin_cs</Name>   
+    <Name>mpd_pro_addin_cs</Name>
     <Description>mpd_pro_addin_cs description</Description>
     <Image>Images\AddinDesktop32.png</Image>
     <Author>mark4238</Author>
@@ -16,7 +13,6 @@
     <!-- Note subject can be one or more of these topics:
                     Content, Framework, Editing, Geodatabase, Geometry, Geoprocessing, Layouts, Map Authoring, Map Exploration -->
   </AddInInfo>
-
   <modules>
     <insertModule id="mpd_pro_addin_cs_Module" className="Module1" autoLoad="false" caption="Module1">
       <!-- uncomment to have the control hosted on a separate tab-->
@@ -25,19 +21,25 @@
           <group refID="mpd_pro_addin_cs_Group1"/>
         </tab>-->
       </tabs>
-              
       <groups>
         <!-- comment this out if you have no controls on the Addin tab to avoid
               an empty group-->
-        <group id="mpd_pro_addin_cs_Group1" caption="Group 1" appearsOnAddInTab="true">
+        <group id="mpd_pro_addin_cs_Group1" caption="Miles per Dollar" appearsOnAddInTab="true">
           <!-- host controls within groups -->
+          <button refID="Esri_APL_MilesPerDollar_VehiclesPane_ShowButton" size="large" />
         </group>
       </groups>
-      
       <controls>
         <!-- add your controls here -->
-      </controls> 
-      
+        <button id="Esri_APL_MilesPerDollar_VehiclesPane_ShowButton" caption="Miles per Dollar" className="VehiclesPane_ShowButton" loadOnClick="true" smallImage="Images\GenericButtonPurple16.png" largeImage="Images\GenericButtonPurple32.png">
+          <tooltip heading="Show Dockpane">How far can you drive on a dollar? Pick a vehicle and a starting point and find out.<disabledText /></tooltip>
+        </button>
+      </controls>
+      <dockPanes>
+        <dockPane id="Esri_APL_MilesPerDollar_VehiclesPane" caption="VehiclesPane" className="VehiclesPaneViewModel" dock="group" dockWith="esri_core_contentsDockPane">
+          <content className="VehiclesPaneView" />
+        </dockPane>
+      </dockPanes>
     </insertModule>
   </modules>
 </ArcGIS>

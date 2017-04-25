@@ -1,0 +1,71 @@
+﻿<UserControl x:Class="Esri.APL.MilesPerDollar.VehiclesPaneView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"   
+             xmlns:ui="clr-namespace:Esri.APL.MilesPerDollar"
+             xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
+             mc:Ignorable="d" 
+             d:DesignHeight="300" d:DesignWidth="300"
+             d:DataContext="{Binding Path=ui.VehiclesPaneViewModel}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <DockPanel Grid.Row="0" LastChildFill="true" KeyboardNavigation.TabNavigation="Local" Height="30">
+            <TextBlock Grid.Column="1" Text="{Binding Heading}" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    FontSize="16" FontWeight="Light">
+                <TextBlock.ToolTip>
+                    <WrapPanel Orientation="Vertical" MaxWidth="300">
+                        <TextBlock Text="{Binding Heading}" TextWrapping="Wrap"/>
+                    </WrapPanel>
+                </TextBlock.ToolTip>
+            </TextBlock>
+        </DockPanel>
+        <!-- Vehicle selection dropdowns -->
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <!-- Combo prompt technique thanks to stackoverflow: http://stackoverflow.com/questions/1426050/how-to-display-default-text-select-team-in-combo-box-on-pageload-in-wpf -->
+            <ComboBox x:Name="ddlYear" DockPanel.Dock="Top" HorizontalAlignment="Stretch" Grid.Row="0" Grid.Column="0" IsReadOnly="True" Margin="0,3,3,0" VerticalAlignment="Center"/>
+            <TextBlock Grid.Row="0" Grid.Column="0"
+                        IsHitTestVisible="False"
+                        Text="&lt;Select a Vehicle Year&gt;" Margin="3,3,0,0" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+
+            <ComboBox x:Name="ddlMake" Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" Margin="3,3,0,0"/>
+            <TextBlock Grid.Row="0" Grid.Column="1"
+                        IsHitTestVisible="False"
+                        Text="&lt;Select a Vehicle Make&gt;" Margin="6,3,0,0" VerticalAlignment="Center"/>
+            <ComboBox x:Name="ddlModel" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="0" VerticalAlignment="Top" IsReadOnly="True" Margin="0,3,3,0"/>
+            <TextBlock Grid.Row="1" Grid.Column="0"
+                        IsHitTestVisible="False"
+                        Text="&lt;Select a Vehicle Model&gt;" Margin="3,3,0,0" VerticalAlignment="Center"/>
+            <ComboBox x:Name="ddlType" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="1" VerticalAlignment="Top" IsReadOnly="True" Margin="3,3,0,0"/>
+            <TextBlock Grid.Row="1" Grid.Column="1"
+                        IsHitTestVisible="False"
+                        Text="&lt;Select a Vehicle Type&gt;" Margin="6,0,3,0" VerticalAlignment="Center"/>
+        </Grid>
+        <DockPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,1">
+            <Button x:Name="btnAddVehicle" Padding="8,3,8,3" HorizontalAlignment="Center" DockPanel.Dock="Top">Add Vehicle</Button>
+            <ListBox x:Name="lstVehiclesSelected" BorderThickness="1,1,1,1" Margin="0,8,0,0" DockPanel.Dock="Top"/>
+            <Label Width="Auto" HorizontalAlignment="Center" Margin="0,8,0,0" DockPanel.Dock="Top">Now click a starting point on the map.</Label>
+        </DockPanel>
+    </Grid>
+</UserControl>
