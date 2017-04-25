@@ -44,7 +44,9 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <!-- Combo prompt technique thanks to stackoverflow: http://stackoverflow.com/questions/1426050/how-to-display-default-text-select-team-in-combo-box-on-pageload-in-wpf -->
-            <ComboBox x:Name="ddlYear" DockPanel.Dock="Top" HorizontalAlignment="Stretch" Grid.Row="0" Grid.Column="0" IsReadOnly="True" Margin="0,3,3,0" VerticalAlignment="Center"/>
+            <ComboBox x:Name="ddlYear" DockPanel.Dock="Top" HorizontalAlignment="Stretch" Grid.Row="0" Grid.Column="0" 
+                      IsReadOnly="True" Margin="0,3,3,0" VerticalAlignment="Center"
+                      ItemsSource="{Binding VehicleYears}"/>
             <TextBlock Grid.Row="0" Grid.Column="0"
                         IsHitTestVisible="False"
                         Text="&lt;Select a Vehicle Year&gt;" Margin="3,3,0,0" VerticalAlignment="Center" HorizontalAlignment="Left"/>
@@ -63,7 +65,7 @@
                         Text="&lt;Select a Vehicle Type&gt;" Margin="6,0,3,0" VerticalAlignment="Center"/>
         </Grid>
         <DockPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,1">
-            <Button x:Name="btnAddVehicle" Padding="8,3,8,3" HorizontalAlignment="Center" DockPanel.Dock="Top">Add Vehicle</Button>
+            <Button x:Name="btnAddVehicle" Padding="8,3,8,3" HorizontalAlignment="Center" DockPanel.Dock="Top" Style="{DynamicResource Esri_SimpleButton}">Add Vehicle</Button>
             <ListBox x:Name="lstVehiclesSelected" BorderThickness="1,1,1,1" Margin="0,8,0,0" DockPanel.Dock="Top"/>
             <Label Width="Auto" HorizontalAlignment="Center" Margin="0,8,0,0" DockPanel.Dock="Top">Now click a starting point on the map.</Label>
         </DockPanel>

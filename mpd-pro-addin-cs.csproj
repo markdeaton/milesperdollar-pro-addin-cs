@@ -120,6 +120,9 @@
   <ItemGroup>
     <AddInContent Include="DarkImages\GenericButtonPurple32.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\FE_1984-2018.xml" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:
