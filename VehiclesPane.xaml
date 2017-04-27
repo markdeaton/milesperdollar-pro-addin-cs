@@ -11,6 +11,7 @@
     <UserControl.Resources>
         <ui:NullToIsVisibleConverter x:Key="nullToIsVisible"/>
         <ui:NullToIsEnabledConverter x:Key="nullToIsEnabled"/>
+        <ui:VehicleXmlToDescriptionString x:Key="vehicleXmlToString"/>
         <ResourceDictionary x:Key="resDictMain">
             <ResourceDictionary.MergedDictionaries>
                 <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml"/>
@@ -79,8 +80,32 @@
         <DockPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,1">
             <Button x:Name="btnAddVehicle" Padding="8,3,8,3" HorizontalAlignment="Center" DockPanel.Dock="Top" 
                     Style="{DynamicResource Esri_SimpleButton}" Command="{Binding AddSelectedVehicleCommand}">Add Vehicle</Button>
-            <ListBox x:Name="lstVehiclesSelected" BorderThickness="1,1,1,1" Margin="0,8,0,0" DockPanel.Dock="Top"/>
-            <Label Width="Auto" HorizontalAlignment="Center" Margin="0,8,0,0" DockPanel.Dock="Top">Now click a starting point on the map.</Label>
+            <ListBox x:Name="lstVehiclesSelected" BorderThickness="1,1,1,1" Margin="0,8,0,0" 
+                     DockPanel.Dock="Top" Height="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ItemsSource="{Binding SelectedVehicles}">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                       <Grid HorizontalAlignment="Stretch">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="50"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding Path=ListDisplayText}" TextTrimming="CharacterEllipsis" Margin="0,0,0,0"/>
+                            <!-- Icon used under Creative Commons BY-SA 3.0 license; see https://commons.wikimedia.org/wiki/File:Antu_task-reject.svg -->
+                            <Button Command="{Binding Path=DataContext.RemoveSelectedVehicleCommand, RelativeSource={RelativeSource AncestorType=Grid}}"
+                                    HorizontalAlignment="Right" Height="16" Width="16">
+                                <Image Source="Images/vehicle-delete.png" Grid.Column="1"/>
+                            </Button>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Width="Auto" HorizontalAlignment="Center" Margin="0,8,0,0" DockPanel.Dock="Top">Now click a starting point on the map.</TextBlock>
         </DockPanel>
     </Grid>
 </UserControl>

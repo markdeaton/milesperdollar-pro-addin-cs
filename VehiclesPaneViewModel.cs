@@ -23,7 +23,7 @@ namespace Esri.APL.MilesPerDollar {
         #region Model variables and properties
 
         private XDocument _xmlAllVehicles;
-        private List<XElement> _xmlSelectedVehicles = new List<XElement>();
+        private ObservableCollection<Vehicle> _selectedVehicles = new ObservableCollection<Vehicle>();
 
         private ObservableCollection<String> _vehicleYears, _vehicleMakes, _vehicleModels, _vehicleTypes;
         // Since we're updating the dropdowns on the UI thread, no need to use the convoluted
@@ -99,15 +99,13 @@ namespace Esri.APL.MilesPerDollar {
             get { return _selectedVehicle; }
             set {
                 SetProperty(ref _selectedVehicle, value);
-                //AddSelectedVehicleCommand.RaiseCanExecuteChanged();
             }
         }
 
-        public List<XElement> SelectedVehicles {
-            get { return _xmlSelectedVehicles; }
+        public ObservableCollection<Vehicle> SelectedVehicles {
+            get { return _selectedVehicles; }
             set {
-                SetProperty(ref _xmlSelectedVehicles, value);
-                //AddSelectedVehicleCommand.RaiseCanExecuteChanged();
+                SetProperty(ref _selectedVehicles, value);
             }
         }
 
@@ -156,6 +154,7 @@ namespace Esri.APL.MilesPerDollar {
             //_readonlyVehicleYears = new ReadOnlyObservableCollection<String>(_vehicleYears);
             //BindingOperations.EnableCollectionSynchronization(_readonlyVehicleYears, _lockXmlYears);
             _addSelectedVehicleCommand = new RelayCommand(() => AddSelectedVehicle(), () => CanAddSelectedVehicle());
+            _removeSelectedVehicleCommand = new RelayCommand(() => RemoveSelectedVehicle(), () => true);
         }
 
         protected override Task InitializeAsync() {
@@ -165,10 +164,13 @@ namespace Esri.APL.MilesPerDollar {
         }
         #endregion
 
-        #region Add Vehicle command
+        #region Add/Remove Vehicle commands
 
         public ICommand AddSelectedVehicleCommand => _addSelectedVehicleCommand;
         private ICommand _addSelectedVehicleCommand;
+        public ICommand RemoveSelectedVehicleCommand => _removeSelectedVehicleCommand;
+        private ICommand _removeSelectedVehicleCommand;
+
         public bool CanAddSelectedVehicle() {
             bool vehicleSelected = SelectedVehicle != null;
             bool tooManyVehiclesAlreadyChosen = SelectedVehicles.Count >= 2;
@@ -176,6 +178,10 @@ namespace Esri.APL.MilesPerDollar {
         }
         private void AddSelectedVehicle() {
             System.Diagnostics.Debug.WriteLine("AddSelectedVehicle");
+            SelectedVehicles.Add(new Vehicle(SelectedVehicle));
+        }
+        private void RemoveSelectedVehicle() {
+            System.Diagnostics.Debug.WriteLine("RemoveSelectedVehicle");
         }
         #endregion
 
@@ -241,5 +247,87 @@ namespace Esri.APL.MilesPerDollar {
             throw new NotImplementedException();
         }
     }
+
+    [ValueConversion(typeof(XElement), typeof(String))]
+    public class VehicleXmlToDescriptionString : IValueConverter {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+            XElement vehicle = value as XElement;
+            return vehicle == null ? "<Error>" :
+                String.Format("%s %s %s %s", vehicle.Attribute("year"), vehicle.Attribute("make"), vehicle.Attribute("model"), vehicle.Attribute("type"));
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+            throw new NotImplementedException();
+        }
+    }
+    #endregion
+
+    #region Helper Classes
+
+    public class Vehicle {
+        private String _year, _make, _model, _type;
+        public Vehicle(String year, String make, String model, String engine) {
+            _year = year;
+            _make = make;
+            _model = model;
+            _type = engine;
+        }
+        public Vehicle(XElement vehicle) {
+            _year = vehicle.Attribute("year").Value;
+            _make = vehicle.Attribute("make").Value;
+            _model = vehicle.Attribute("model").Value;
+            _type = vehicle.Attribute("engine").Value;
+        }
+
+        public override string ToString() {
+            return String.Format("{0} {1} {2} {3}", _year, _make, _model, _type);
+        }
+
+        public string ListDisplayText {
+            get {
+                return ToString();
+            }
+        }
+        public string Make {
+            get {
+                return _make;
+            }
+
+            set {
+                _make = value;
+            }
+        }
+
+        public string Model {
+            get {
+                return _model;
+            }
+
+            set {
+                _model = value;
+            }
+        }
+
+        public string Type {
+            get {
+                return _type;
+            }
+
+            set {
+                _type = value;
+            }
+        }
+
+        public string Year {
+            get {
+                return _year;
+            }
+
+            set {
+                _year = value;
+            }
+        }
+    }
+
     #endregion
 }

@@ -123,6 +123,9 @@
   <ItemGroup>
     <Resource Include="Resources\FE_1984-2018.xml" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\vehicle-delete.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:
