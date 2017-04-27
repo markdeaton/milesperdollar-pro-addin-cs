@@ -12,6 +12,8 @@ using System.Reflection;
 using System.IO;
 using System.Windows;
 using System.Globalization;
+using System.Windows.Input;
+using ArcGIS.Desktop.Framework.Threading.Tasks;
 
 namespace Esri.APL.MilesPerDollar {
     internal class VehiclesPaneViewModel : DockPane {
@@ -21,6 +23,7 @@ namespace Esri.APL.MilesPerDollar {
         #region Model variables and properties
 
         private XDocument _xmlAllVehicles;
+        private List<XElement> _xmlSelectedVehicles = new List<XElement>();
 
         private ObservableCollection<String> _vehicleYears, _vehicleMakes, _vehicleModels, _vehicleTypes;
         // Since we're updating the dropdowns on the UI thread, no need to use the convoluted
@@ -94,9 +97,17 @@ namespace Esri.APL.MilesPerDollar {
 
         public XElement SelectedVehicle {
             get { return _selectedVehicle; }
-
             set {
                 SetProperty(ref _selectedVehicle, value);
+                //AddSelectedVehicleCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        public List<XElement> SelectedVehicles {
+            get { return _xmlSelectedVehicles; }
+            set {
+                SetProperty(ref _xmlSelectedVehicles, value);
+                //AddSelectedVehicleCommand.RaiseCanExecuteChanged();
             }
         }
 
@@ -144,7 +155,7 @@ namespace Esri.APL.MilesPerDollar {
             // Set up necessary defaults
             //_readonlyVehicleYears = new ReadOnlyObservableCollection<String>(_vehicleYears);
             //BindingOperations.EnableCollectionSynchronization(_readonlyVehicleYears, _lockXmlYears);
-
+            _addSelectedVehicleCommand = new RelayCommand(() => AddSelectedVehicle(), () => CanAddSelectedVehicle());
         }
 
         protected override Task InitializeAsync() {
@@ -154,6 +165,19 @@ namespace Esri.APL.MilesPerDollar {
         }
         #endregion
 
+        #region Add Vehicle command
+
+        public ICommand AddSelectedVehicleCommand => _addSelectedVehicleCommand;
+        private ICommand _addSelectedVehicleCommand;
+        public bool CanAddSelectedVehicle() {
+            bool vehicleSelected = SelectedVehicle != null;
+            bool tooManyVehiclesAlreadyChosen = SelectedVehicles.Count >= 2;
+            return vehicleSelected && !tooManyVehiclesAlreadyChosen;
+        }
+        private void AddSelectedVehicle() {
+            System.Diagnostics.Debug.WriteLine("AddSelectedVehicle");
+        }
+        #endregion
 
         #region Dockpane Plumbing
 
@@ -195,7 +219,7 @@ namespace Esri.APL.MilesPerDollar {
     #region Value Converters
 
     [ValueConversion(typeof(object), typeof(Visibility))]
-    public class NullToVisibilityConverter : IValueConverter {
+    public class NullToIsVisibleConverter : IValueConverter {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
             System.Diagnostics.Debug.WriteLine("NullToVisibilityConverter");
             return value == null ? Visibility.Visible : Visibility.Collapsed;

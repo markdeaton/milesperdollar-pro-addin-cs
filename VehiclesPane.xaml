@@ -9,8 +9,8 @@
              d:DesignHeight="300" d:DesignWidth="300"
              d:DataContext="{Binding Path=ui.VehiclesPaneViewModel}">
     <UserControl.Resources>
-        <ui:NullToVisibilityConverter x:Key="nullToVisibility"/>
-        <ui:NullToIsEnabledConverter x:Key="nullToIsVisible"/>
+        <ui:NullToIsVisibleConverter x:Key="nullToIsVisible"/>
+        <ui:NullToIsEnabledConverter x:Key="nullToIsEnabled"/>
         <ResourceDictionary x:Key="resDictMain">
             <ResourceDictionary.MergedDictionaries>
                 <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml"/>
@@ -52,30 +52,33 @@
             <TextBlock Grid.Row="0" Grid.Column="0"
                         IsHitTestVisible="False"
                         Text="&lt;Select a Vehicle Year&gt;" Margin="3,3,0,0" VerticalAlignment="Center" HorizontalAlignment="Left"
-                       Visibility="{Binding SelectedValue, ElementName=ddlYear, Converter={StaticResource nullToVisibility}}"/>
+                       Visibility="{Binding SelectedValue, ElementName=ddlYear, Converter={StaticResource nullToIsVisible}}"/>
 
             <ComboBox x:Name="ddlMake" Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" Margin="3,3,0,0"
-                      ItemsSource="{Binding VehicleMakes}" SelectedItem="{Binding Path=SelectedVehicleMake, Mode=TwoWay}"/>
+                      ItemsSource="{Binding VehicleMakes}" SelectedItem="{Binding Path=SelectedVehicleMake, Mode=TwoWay}"
+                      IsEnabled="{Binding SelectedVehicleYear, Converter={StaticResource nullToIsEnabled}}"/>
             <TextBlock Grid.Row="0" Grid.Column="1"
                         IsHitTestVisible="False"
                         Text="&lt;Select a Vehicle Make&gt;" Margin="6,3,0,0" VerticalAlignment="Center"
-                       Visibility="{Binding SelectedItem, ElementName=ddlMake, Converter={StaticResource nullToVisibility}}"/>
+                       Visibility="{Binding SelectedItem, ElementName=ddlMake, Converter={StaticResource nullToIsVisible}}"/>
             <ComboBox x:Name="ddlModel" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="0" VerticalAlignment="Top" IsReadOnly="True" Margin="0,3,3,0"
-                      ItemsSource="{Binding VehicleModels}" SelectedItem="{Binding Path=SelectedVehicleModel, Mode=TwoWay}"/>
+                      ItemsSource="{Binding VehicleModels}" SelectedItem="{Binding Path=SelectedVehicleModel, Mode=TwoWay}"
+                      IsEnabled="{Binding SelectedVehicleMake, Converter={StaticResource nullToIsEnabled}}"/>
             <TextBlock Grid.Row="1" Grid.Column="0"
                         IsHitTestVisible="False"
                         Text="&lt;Select a Vehicle Model&gt;" Margin="3,3,0,0" VerticalAlignment="Center"
-                       Visibility="{Binding SelectedItem, ElementName=ddlModel, Converter={StaticResource nullToVisibility}}"/>
+                       Visibility="{Binding SelectedItem, ElementName=ddlModel, Converter={StaticResource nullToIsVisible}}"/>
             <ComboBox x:Name="ddlType" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="1" VerticalAlignment="Top" IsReadOnly="True" Margin="3,3,0,0"
-                      ItemsSource="{Binding VehicleTypes}" SelectedItem="{Binding Path=SelectedVehicleType, Mode=TwoWay}"/>
+                      ItemsSource="{Binding VehicleTypes}" SelectedItem="{Binding Path=SelectedVehicleType, Mode=TwoWay}"
+                      IsEnabled="{Binding SelectedVehicleModel, Converter={StaticResource nullToIsEnabled}}"/>
             <TextBlock Grid.Row="1" Grid.Column="1"
                         IsHitTestVisible="False"
                         Text="&lt;Select a Vehicle Type&gt;" Margin="6,0,3,0" VerticalAlignment="Center"
-                       Visibility="{Binding SelectedItem, ElementName=ddlType, Converter={StaticResource nullToVisibility}}"/>
+                       Visibility="{Binding SelectedItem, ElementName=ddlType, Converter={StaticResource nullToIsVisible}}"/>
         </Grid>
         <DockPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,1">
             <Button x:Name="btnAddVehicle" Padding="8,3,8,3" HorizontalAlignment="Center" DockPanel.Dock="Top" 
-                    Style="{DynamicResource Esri_SimpleButton}" IsEnabled="{Binding SelectedVehicle, Converter={StaticResource nullToIsVisible}}">Add Vehicle</Button>
+                    Style="{DynamicResource Esri_SimpleButton}" Command="{Binding AddSelectedVehicleCommand}">Add Vehicle</Button>
             <ListBox x:Name="lstVehiclesSelected" BorderThickness="1,1,1,1" Margin="0,8,0,0" DockPanel.Dock="Top"/>
             <Label Width="Auto" HorizontalAlignment="Center" Margin="0,8,0,0" DockPanel.Dock="Top">Now click a starting point on the map.</Label>
         </DockPanel>
