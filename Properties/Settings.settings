@@ -1,0 +1,21 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="Esri.APL.MilesPerDollar.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="PADDZonesUrl" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">https://maps.esri.com/md/MilesPerDollar/com/esri/apl/mpd_mvc/assets/data/States2PADD.xml</Value>
+    </Setting>
+    <Setting Name="VehicleInfoUrl" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">https://maps.esri.com/md/MilesPerDollar/com/esri/apl/mpd_mvc/assets/data/vehicles.xml</Value>
+    </Setting>
+    <Setting Name="FuelCostUrl" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">https://maps.esri.com/md/MilesPerDollar/com/esri/apl/mpd_mvc/assets/data/PET_PRI_GND_A_EPM0_PTE_DPGAL_W.xls</Value>
+    </Setting>
+    <Setting Name="FuelCostUrl_debug" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">http://cirque.esri.com/MilesPerDollar/PET_PRI_GND_A_EPM0_PTE_DPGAL_W.xls</Value>
+    </Setting>
+    <Setting Name="QryPointToState" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">https://sampleserver3.arcgisonline.com/ArcGIS/rest/services/Network/USA/MapServer/121/query</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

@@ -79,7 +79,7 @@
         </Grid>
         <DockPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,1">
             <Button x:Name="btnAddVehicle" Padding="8,3,8,3" HorizontalAlignment="Center" DockPanel.Dock="Top" 
-                    Style="{DynamicResource Esri_SimpleButton}" Command="{Binding AddSelectedVehicleCommand}">Add Vehicle</Button>
+                    Style="{StaticResource Esri_SimpleButton}" Command="{Binding AddSelectedVehicleCommand}">Add Vehicle</Button>
             <ListBox x:Name="lstVehiclesSelected" BorderThickness="1,1,1,1" Margin="0,8,0,0" 
                      DockPanel.Dock="Top" Height="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ItemsSource="{Binding SelectedVehicles}">
@@ -90,22 +90,28 @@
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                       <Grid HorizontalAlignment="Stretch">
+                       <Grid HorizontalAlignment="Stretch" Background="{x:Null}" Opacity="1">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="50"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="{Binding Path=ListDisplayText}" TextTrimming="CharacterEllipsis" Margin="0,0,0,0"/>
                             <!-- Icon used under Creative Commons BY-SA 3.0 license; see https://commons.wikimedia.org/wiki/File:Antu_task-reject.svg -->
-                            <Button Command="{Binding Path=DataContext.RemoveSelectedVehicleCommand, RelativeSource={RelativeSource AncestorType=Grid}}"
-                                    HorizontalAlignment="Right" Height="16" Width="16">
-                                <Image Source="Images/vehicle-delete.png" Grid.Column="1"/>
+                            <Button Command="{Binding Path=DataContext.RemoveSelectedVehicleCommand, RelativeSource={RelativeSource Mode=FindAncestor,AncestorType={x:Type UserControl}}}" 
+                                    CommandParameter="{Binding}"
+                                    FocusVisualStyle="{x:Null}"
+                                    HorizontalAlignment="Right" BorderThickness="0" Background="{x:Null}">
+                                <Image Source="Images/vehicle-delete.png" Grid.Column="1" Height="16" Width="16"/>
                             </Button>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
-            <TextBlock Width="Auto" HorizontalAlignment="Center" Margin="0,8,0,0" DockPanel.Dock="Top">Now click a starting point on the map.</TextBlock>
+            <Button Height="Auto" HorizontalAlignment="Center" Margin="0,8,0,0" DockPanel.Dock="Top" Command="{Binding StartSAAnalysisCommand}">
+                    <TextBlock Width="Auto" TextAlignment="Center" TextWrapping="Wrap" Margin="5,2,5,2">
+                        Zoom to an area of interest. Click here, then click a start location.
+                    </TextBlock>
+            </Button>
         </DockPanel>
     </Grid>
 </UserControl>

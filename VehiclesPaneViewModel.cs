@@ -14,16 +14,25 @@ using System.Windows;
 using System.Globalization;
 using System.Windows.Input;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
+using System.Collections.Specialized;
+using System.Net;
+using Excel;
+using System.Data;
+using ArcGIS.Core.Geometry;
+using Newtonsoft.Json;
 
 namespace Esri.APL.MilesPerDollar {
     internal class VehiclesPaneViewModel : DockPane {
+        // CONSTS
+        private const string STATE_ALLOW_FIND_SA = "mpd_allow_find_servicearea_state";
+
         // Thread locking objects
         protected object _lockXmlYears = new object();
 
         #region Model variables and properties
 
         private XDocument _xmlAllVehicles;
-        private ObservableCollection<Vehicle> _selectedVehicles = new ObservableCollection<Vehicle>();
+        private ObservableCollection<Vehicle> _selectedVehicles;
 
         private ObservableCollection<String> _vehicleYears, _vehicleMakes, _vehicleModels, _vehicleTypes;
         // Since we're updating the dropdowns on the UI thread, no need to use the convoluted
@@ -33,6 +42,22 @@ namespace Esri.APL.MilesPerDollar {
         private String _selectedVehicleYear, _selectedVehicleMake, _selectedVehicleModel, _selectedVehicleType;
         private XElement _selectedVehicle;
 
+        private Dictionary<string, double> _paddZoneToFuelCost = new Dictionary<string, double>();
+        public Dictionary<string, double> PADDZoneToFuelCost {
+            get { return _paddZoneToFuelCost;  }
+            set { _paddZoneToFuelCost = value; }
+        }
+
+        private Dictionary<string, string> _paddStateToZone = new Dictionary<string, string>();
+        public Dictionary<string, string> PaddStateToZone {
+            get {
+                return _paddStateToZone;
+            }
+
+            set {
+                _paddStateToZone = value;
+            }
+        }
         public ObservableCollection<String> VehicleYears {
             get { return _vehicleYears; }
             set { SetProperty(ref _vehicleYears, value); }
@@ -109,7 +134,44 @@ namespace Esri.APL.MilesPerDollar {
             }
         }
 
-        private void ReadVehicleData() {
+        //private void OnSelectedVehiclesChanged(object sender, NotifyCollectionChangedEventArgs e) {
+        //    bool enoughVehiclesSelected = _selectedVehicles.Count > 0;
+        //    bool mapPaneActive = FrameworkApplication.State.Contains(DAML.State.esri_mapping_mapPane);
+        //    bool oktoStartSAAnalysis = enoughVehiclesSelected && mapPaneActive;
+
+        //    if (oktoStartSAAnalysis) FrameworkApplication.State.Activate(STATE_ALLOW_FIND_SA);
+        //    else FrameworkApplication.State.Deactivate(STATE_ALLOW_FIND_SA);
+        //}
+
+        
+        private void GetFuelPricePerPADDZone() {
+            string sFuelPriceDataUrl = Properties.Settings.Default.FuelCostUrl;
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(sFuelPriceDataUrl);
+            req.ContentType = "application/ms-excel";
+            Stream resp = req.GetResponse().GetResponseStream();
+            MemoryStream ms = new MemoryStream(); resp.CopyTo(ms);
+            IExcelDataReader xldr = ExcelReaderFactory.CreateBinaryReader(ms);
+            DataTable priceSheet = xldr.AsDataSet().Tables[2];
+            DataRow priceRow = priceSheet.Rows[priceSheet.Rows.Count - 2];
+            PADDZoneToFuelCost.Add("I-A", Double.Parse(priceRow[2].ToString()));
+            PADDZoneToFuelCost.Add("I-B", Double.Parse(priceRow[3].ToString()));
+            PADDZoneToFuelCost.Add("I-C", Double.Parse(priceRow[4].ToString()));
+            PADDZoneToFuelCost.Add("II", Double.Parse(priceRow[5].ToString()));
+            PADDZoneToFuelCost.Add("III", Double.Parse(priceRow[6].ToString()));
+            PADDZoneToFuelCost.Add("IV", Double.Parse(priceRow[7].ToString()));
+            PADDZoneToFuelCost.Add("V", Double.Parse(priceRow[8].ToString()));
+        }
+        private void GetStatesPerPADDZone() {
+            string sPaddZonesUrl = Properties.Settings.Default.PADDZonesUrl;
+            //HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(sPaddZonesUrl);
+            //req.ContentType = "text/xml";
+            XDocument doc = XDocument.Load(sPaddZonesUrl);
+            foreach (XElement elt in doc.Root.Elements(XName.Get("state"))) {
+                PaddStateToZone.Add((string)elt.Attribute("name"), (string)elt.Attribute("padd"));
+            }
+
+        }
+        private void GetVehicleData() {
             // Read vehicles data
             Uri uri = new Uri("pack://application:,,,/Esri.APL.MilesPerDollar;component/Resources/FE_1984-2018.xml");
             System.IO.Stream stIn = System.Windows.Application.GetResourceStream(uri).Stream;
@@ -153,18 +215,26 @@ namespace Esri.APL.MilesPerDollar {
             // Set up necessary defaults
             //_readonlyVehicleYears = new ReadOnlyObservableCollection<String>(_vehicleYears);
             //BindingOperations.EnableCollectionSynchronization(_readonlyVehicleYears, _lockXmlYears);
+            _selectedVehicles = new ObservableCollection<Vehicle>();
+            //SelectedVehicles.CollectionChanged += OnSelectedVehiclesChanged;
+
             _addSelectedVehicleCommand = new RelayCommand(() => AddSelectedVehicle(), () => CanAddSelectedVehicle());
-            _removeSelectedVehicleCommand = new RelayCommand(() => RemoveSelectedVehicle(), () => true);
+            _removeSelectedVehicleCommand = new RelayCommand((selected) => RemoveSelectedVehicle(selected), () => true);
+            _startSAAnalysisCommand = new RelayCommand(() => StartSAAnalysis(), () => CanStartSAAnalysis());
         }
 
         protected override Task InitializeAsync() {
-            ReadVehicleData();
+            // Populate data lists
+            GetVehicleData();
+            GetFuelPricePerPADDZone();
+            GetStatesPerPADDZone();
+            // Prepopulate years dropdown
             GetVehicleYears();
             return base.InitializeAsync();
         }
         #endregion
 
-        #region Add/Remove Vehicle commands
+        #region Add/Remove Vehicle command
 
         public ICommand AddSelectedVehicleCommand => _addSelectedVehicleCommand;
         private ICommand _addSelectedVehicleCommand;
@@ -180,8 +250,49 @@ namespace Esri.APL.MilesPerDollar {
             System.Diagnostics.Debug.WriteLine("AddSelectedVehicle");
             SelectedVehicles.Add(new Vehicle(SelectedVehicle));
         }
-        private void RemoveSelectedVehicle() {
-            System.Diagnostics.Debug.WriteLine("RemoveSelectedVehicle");
+        private void RemoveSelectedVehicle(object selected) {
+            System.Diagnostics.Debug.WriteLine("RemoveSelectedVehicle: " + (selected as Vehicle)?.ToString());
+            if (selected is Vehicle) SelectedVehicles.Remove((Vehicle)selected);
+        }
+        #endregion
+
+        #region Start Analysis command / Perform Analysis
+
+        private ICommand _startSAAnalysisCommand;
+        public ICommand StartSAAnalysisCommand => _startSAAnalysisCommand;
+
+        public bool CanStartSAAnalysis() {
+            bool enoughVehiclesSelected = SelectedVehicles.Count > 0;
+            bool mapPaneActive = FrameworkApplication.State.Contains(DAML.State.esri_mapping_mapPane);
+            bool oktoStartSAAnalysis = enoughVehiclesSelected && mapPaneActive;
+
+            if (oktoStartSAAnalysis) FrameworkApplication.State.Activate(STATE_ALLOW_FIND_SA);
+            else FrameworkApplication.State.Deactivate(STATE_ALLOW_FIND_SA);
+
+            return oktoStartSAAnalysis;
+        }
+        private void StartSAAnalysis() {
+            FrameworkApplication.SetCurrentToolAsync(MPDSATool.TOOL_ID);
+        }
+
+        internal void PerformAnalysis(MapPoint ptStartLoc) {
+            string sReqUrl = Properties.Settings.Default.QryPointToState;
+            string sReq = String.Format("{0}?returnGeometry=false&returnDistinctValues=false&geometry={1}&geometryType=esriGeometryPoint&f=json&outFields=*&spatialRel=esriSpatialRelIntersects",
+                            sReqUrl, ptStartLoc.ToJson());
+            // Find out what state the user clicked; or report an error if outside the U.S.
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(sReq);
+            StreamReader sr = new StreamReader(req.GetResponse().GetResponseStream());
+            string sResp = sr.ReadToEnd();
+            dynamic resp = JsonConvert.DeserializeObject(sResp);
+            string sState = resp.features[0].attributes.STATE.ToString();
+
+            // Find out what PADD zone the state is in
+
+            // Find out the gallons/$1.00 in that PADD zone
+
+            // Find out the miles each vehicle can go
+
+            // Run the query
         }
         #endregion
 
@@ -199,7 +310,15 @@ namespace Esri.APL.MilesPerDollar {
 
             pane.Activate();
         }
-
+        internal static VehiclesPaneViewModel _instance = null;
+        internal static VehiclesPaneViewModel instance {
+            get {
+                if (_instance == null) {
+                    _instance = (VehiclesPaneViewModel)FrameworkApplication.DockPaneManager.Find(_dockPaneID);
+                }
+                return _instance;
+            }
+        }
         /// <summary>
         /// Text shown near the top of the DockPane.
         /// </summary>

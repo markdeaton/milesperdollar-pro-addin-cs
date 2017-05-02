@@ -1,7 +1,4 @@
-﻿<ArcGIS defaultAssembly="Esri.APL.MilesPerDollar.dll" defaultNamespace="Esri.APL.MilesPerDollar" 
-        xmlns="http://schemas.esri.com/DADF/Registry" 
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-        xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///E:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
+﻿<ArcGIS defaultAssembly="Esri.APL.MilesPerDollar.dll" defaultNamespace="Esri.APL.MilesPerDollar" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///E:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
   <AddInInfo id="{500ff634-dd1f-4962-8baa-77f8dc37040d}" version="1.0" desktopVersion="1.4.7198">
     <Name>mpd_pro_addin_cs</Name>
     <Description>mpd_pro_addin_cs description</Description>
@@ -27,6 +24,7 @@
         <group id="mpd_pro_addin_cs_Group1" caption="Miles per Dollar" appearsOnAddInTab="true">
           <!-- host controls within groups -->
           <button refID="Esri_APL_MilesPerDollar_VehiclesPane_ShowButton" size="large" />
+          <tool refID="Esri_APL_MilesPerDollar_DoSAAnalysis" size="large" />
         </group>
       </groups>
       <controls>
@@ -34,6 +32,14 @@
         <button id="Esri_APL_MilesPerDollar_VehiclesPane_ShowButton" caption="Miles per Dollar" className="VehiclesPane_ShowButton" loadOnClick="true" smallImage="Images\GenericButtonPurple16.png" largeImage="Images\GenericButtonPurple32.png">
           <tooltip heading="Show Dockpane">How far can you drive on a dollar? Pick a vehicle and a starting point and find out.<disabledText /></tooltip>
         </button>
+        <tool id="Esri_APL_MilesPerDollar_MPDSATool" caption="MPD Tool" className="MPDSATool" loadOnClick="true" 
+              smallImage="Images\GenericButtonRed16.png" largeImage="Images\GenericButtonRed32.png" condition="mpd_allow_find_servicearea_condition">
+          <tooltip heading="Miles per Dollar">Click to enable the analysis.
+            <disabledText>
+              Choose one or more vehicles and make sure a mapping pane is active.
+            </disabledText>
+          </tooltip>
+        </tool>
       </controls>
       <dockPanes>
         <dockPane id="Esri_APL_MilesPerDollar_VehiclesPane" caption="VehiclesPane" className="VehiclesPaneViewModel" dock="group" dockWith="esri_core_contentsDockPane">
@@ -42,4 +48,10 @@
       </dockPanes>
     </insertModule>
   </modules>
+  <conditions>
+    <!-- Condition to allow map click -->
+    <insertCondition id="mpd_allow_find_servicearea_condition" caption="Allow Miles per Dollar Map Click">
+        <state id="mpd_allow_find_servicearea_state" />
+    </insertCondition>
+  </conditions>
 </ArcGIS>
