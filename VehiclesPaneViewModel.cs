@@ -1,25 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using System.Xml.Linq;
 using System.Collections.ObjectModel;
 using System.Windows.Data;
-using System.Reflection;
 using System.IO;
 using System.Windows;
 using System.Globalization;
 using System.Windows.Input;
-using ArcGIS.Desktop.Framework.Threading.Tasks;
-using System.Collections.Specialized;
 using System.Net;
 using Excel;
 using System.Data;
 using ArcGIS.Core.Geometry;
 using Newtonsoft.Json;
+using System.Collections.Specialized;
+using System.Windows.Media;
 
 namespace Esri.APL.MilesPerDollar {
     internal class VehiclesPaneViewModel : DockPane {
@@ -34,12 +32,12 @@ namespace Esri.APL.MilesPerDollar {
         private XDocument _xmlAllVehicles;
         private ObservableCollection<Vehicle> _selectedVehicles;
 
-        private ObservableCollection<String> _vehicleYears, _vehicleMakes, _vehicleModels, _vehicleTypes;
+        private ObservableCollection<string> _vehicleYears, _vehicleMakes, _vehicleModels, _vehicleTypes;
         // Since we're updating the dropdowns on the UI thread, no need to use the convoluted
         // read-only sync pattern shown in some of the samples.
-        //private readonly ReadOnlyObservableCollection<String> _readonlyVehicleYears;
+        //private readonly ReadOnlyObservableCollection<string> _readonlyVehicleYears;
 
-        private String _selectedVehicleYear, _selectedVehicleMake, _selectedVehicleModel, _selectedVehicleType;
+        private string _selectedVehicleYear, _selectedVehicleMake, _selectedVehicleModel, _selectedVehicleType;
         private XElement _selectedVehicle;
 
         private Dictionary<string, double> _paddZoneToFuelCost = new Dictionary<string, double>();
@@ -58,7 +56,7 @@ namespace Esri.APL.MilesPerDollar {
                 _paddStateToZone = value;
             }
         }
-        public ObservableCollection<String> VehicleYears {
+        public ObservableCollection<string> VehicleYears {
             get { return _vehicleYears; }
             set { SetProperty(ref _vehicleYears, value); }
         }
@@ -134,16 +132,17 @@ namespace Esri.APL.MilesPerDollar {
             }
         }
 
-        //private void OnSelectedVehiclesChanged(object sender, NotifyCollectionChangedEventArgs e) {
-        //    bool enoughVehiclesSelected = _selectedVehicles.Count > 0;
-        //    bool mapPaneActive = FrameworkApplication.State.Contains(DAML.State.esri_mapping_mapPane);
-        //    bool oktoStartSAAnalysis = enoughVehiclesSelected && mapPaneActive;
+        private void OnSelectedVehiclesChanged(object sender, NotifyCollectionChangedEventArgs e) {
+            ObservableCollection<Vehicle> vehs = (ObservableCollection<Vehicle>)sender;
+            System.Linq.IOrderedEnumerable<Vehicle> ovehs = vehs.OrderByDescending(vehicle => vehicle.Mpg);
 
-        //    if (oktoStartSAAnalysis) FrameworkApplication.State.Activate(STATE_ALLOW_FIND_SA);
-        //    else FrameworkApplication.State.Deactivate(STATE_ALLOW_FIND_SA);
-        //}
+            ovehs.First().Color = Colors.LightGreen.ToString();
+            ovehs.Last().Color = Colors.Crimson.ToString();
 
-        
+            System.Diagnostics.Debug.WriteLine("OnSelectedVehiclesChanged");
+        }
+
+
         private void GetFuelPricePerPADDZone() {
             string sFuelPriceDataUrl = Properties.Settings.Default.FuelCostUrl;
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(sFuelPriceDataUrl);
@@ -181,7 +180,7 @@ namespace Esri.APL.MilesPerDollar {
             var qryYears = from vehicle in _xmlAllVehicles.Root.Elements("vehicle")
                            orderby vehicle.Attribute("year").Value
                            select vehicle.Attribute("year").Value;
-            VehicleYears = new ObservableCollection<String>(qryYears.Distinct());
+            VehicleYears = new ObservableCollection<string>(qryYears.Distinct());
         }
         private void GetVehicleMakes() {
             var qryMakes = from vehicle in _xmlAllVehicles.Root.Elements("vehicle")
@@ -213,10 +212,10 @@ namespace Esri.APL.MilesPerDollar {
         #region CTOR & Initialization
         protected VehiclesPaneViewModel() {
             // Set up necessary defaults
-            //_readonlyVehicleYears = new ReadOnlyObservableCollection<String>(_vehicleYears);
+            //_readonlyVehicleYears = new ReadOnlyObservableCollection<string>(_vehicleYears);
             //BindingOperations.EnableCollectionSynchronization(_readonlyVehicleYears, _lockXmlYears);
             _selectedVehicles = new ObservableCollection<Vehicle>();
-            //SelectedVehicles.CollectionChanged += OnSelectedVehiclesChanged;
+            SelectedVehicles.CollectionChanged += OnSelectedVehiclesChanged;
 
             _addSelectedVehicleCommand = new RelayCommand(() => AddSelectedVehicle(), () => CanAddSelectedVehicle());
             _removeSelectedVehicleCommand = new RelayCommand((selected) => RemoveSelectedVehicle(selected), () => true);
@@ -287,8 +286,10 @@ namespace Esri.APL.MilesPerDollar {
             string sState = resp.features[0].attributes.STATE.ToString();
 
             // Find out what PADD zone the state is in
+            string sPADDZone = PaddStateToZone[sState];
 
             // Find out the gallons/$1.00 in that PADD zone
+            double nFuelCost = PADDZoneToFuelCost[sPADDZone];
 
             // Find out the miles each vehicle can go
 
@@ -311,6 +312,9 @@ namespace Esri.APL.MilesPerDollar {
             pane.Activate();
         }
         internal static VehiclesPaneViewModel _instance = null;
+        /// <summary>
+        /// Get the single instance of the ViewModel. This is a way to pass data, or execute code from, other code-behinds.
+        /// </summary>
         internal static VehiclesPaneViewModel instance {
             get {
                 if (_instance == null) {
@@ -367,7 +371,7 @@ namespace Esri.APL.MilesPerDollar {
         }
     }
 
-    [ValueConversion(typeof(XElement), typeof(String))]
+    [ValueConversion(typeof(XElement), typeof(string))]
     public class VehicleXmlToDescriptionString : IValueConverter {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
             XElement vehicle = value as XElement;
@@ -382,20 +386,24 @@ namespace Esri.APL.MilesPerDollar {
     #endregion
 
     #region Helper Classes
-
-    public class Vehicle {
-        private String _year, _make, _model, _type;
-        public Vehicle(String year, String make, String model, String engine) {
+    //TODO blog about PropertyChangedBase for color binding
+    public class Vehicle : PropertyChangedBase {
+        private string _year, _make, _model, _type;
+        private int _mpg;
+        private string _color;
+        public Vehicle(string year, string make, string model, string engine, int mpg) {
             _year = year;
             _make = make;
             _model = model;
             _type = engine;
+            _mpg = mpg;
         }
         public Vehicle(XElement vehicle) {
             _year = vehicle.Attribute("year").Value;
             _make = vehicle.Attribute("make").Value;
             _model = vehicle.Attribute("model").Value;
             _type = vehicle.Attribute("engine").Value;
+            _mpg = Int32.Parse(vehicle.Attribute("mpg").Value);
         }
 
         public override string ToString() {
@@ -444,6 +452,29 @@ namespace Esri.APL.MilesPerDollar {
 
             set {
                 _year = value;
+            }
+        }
+
+        /// <summary>
+        /// The color used to display the drive-distance polygon and list item for this vehicle.
+        /// </summary>
+        public string Color {
+            get {
+                return _color;
+            }
+
+            set {
+                SetProperty(ref _color, value);
+            }
+        }
+
+        public int Mpg {
+            get {
+                return _mpg;
+            }
+
+            set {
+                _mpg = value;
             }
         }
     }

@@ -86,6 +86,8 @@
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="TextBlock.Foreground" Value="{Binding Color}"/>
+                        <Setter Property="Background" Value="{DynamicResource Esri_Gray120}"/>
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>

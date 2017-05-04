@@ -28,7 +28,7 @@ namespace Esri.APL.MilesPerDollar {
 
         protected override Task<bool> OnSketchCompleteAsync(Geometry geometry) {
             System.Diagnostics.Debug.WriteLine("Map tool sketch complete");
-
+            //TODO blog about creating ViewModel static instance var so we can call it from codebehind
             VehiclesPaneViewModel.instance.PerformAnalysis(geometry as MapPoint);
 
             return base.OnSketchCompleteAsync(geometry);
