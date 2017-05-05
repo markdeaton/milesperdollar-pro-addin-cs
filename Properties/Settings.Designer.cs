@@ -71,5 +71,15 @@ namespace Esri.APL.MilesPerDollar.Properties {
                 return ((string)(this["QryPointToState"]));
             }
         }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("https://maps.esri.com/apl22/rest/services/SvcAreaByDist/MPGServiceArea_WM/GPServe" +
+            "r/MPGSvcArea/execute")]
+        public string GPFindSA {
+            get {
+                return ((string)(this["GPFindSA"]));
+            }
+        }
     }
 }

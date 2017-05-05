@@ -17,5 +17,8 @@
     <Setting Name="QryPointToState" Type="System.String" Scope="Application">
       <Value Profile="(Default)">https://sampleserver3.arcgisonline.com/ArcGIS/rest/services/Network/USA/MapServer/121/query</Value>
     </Setting>
+    <Setting Name="GPFindSA" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">https://maps.esri.com/apl22/rest/services/SvcAreaByDist/MPGServiceArea_WM/GPServer/MPGSvcArea/execute</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

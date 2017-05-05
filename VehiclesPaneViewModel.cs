@@ -18,11 +18,16 @@ using ArcGIS.Core.Geometry;
 using Newtonsoft.Json;
 using System.Collections.Specialized;
 using System.Windows.Media;
+using ArcGIS.Desktop.Core.Geoprocessing;
+using ArcGIS.Desktop.Framework.Threading.Tasks;
+using ArcGIS.Core.Data;
+using ArcGIS.Desktop.Mapping;
 
 namespace Esri.APL.MilesPerDollar {
     internal class VehiclesPaneViewModel : DockPane {
         // CONSTS
         private const string STATE_ALLOW_FIND_SA = "mpd_allow_find_servicearea_state";
+        private const double METERS_PER_MILE = 1609.34;
 
         // Thread locking objects
         protected object _lockXmlYears = new object();
@@ -160,6 +165,7 @@ namespace Esri.APL.MilesPerDollar {
             PADDZoneToFuelCost.Add("IV", Double.Parse(priceRow[7].ToString()));
             PADDZoneToFuelCost.Add("V", Double.Parse(priceRow[8].ToString()));
         }
+        //TODO make this a project resource
         private void GetStatesPerPADDZone() {
             string sPaddZonesUrl = Properties.Settings.Default.PADDZonesUrl;
             //HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(sPaddZonesUrl);
@@ -274,15 +280,23 @@ namespace Esri.APL.MilesPerDollar {
             FrameworkApplication.SetCurrentToolAsync(MPDSATool.TOOL_ID);
         }
 
-        internal void PerformAnalysis(MapPoint ptStartLoc) {
+        internal async Task PerformAnalysis(MapPoint ptStartLoc) {
+            //TODO Progress/busy indicator
             string sReqUrl = Properties.Settings.Default.QryPointToState;
             string sReq = String.Format("{0}?returnGeometry=false&returnDistinctValues=false&geometry={1}&geometryType=esriGeometryPoint&f=json&outFields=*&spatialRel=esriSpatialRelIntersects",
                             sReqUrl, ptStartLoc.ToJson());
             // Find out what state the user clicked; or report an error if outside the U.S.
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(sReq);
-            StreamReader sr = new StreamReader(req.GetResponse().GetResponseStream());
-            string sResp = sr.ReadToEnd();
+            string sResp;
+            using (StreamReader sr = new StreamReader(req.GetResponse().GetResponseStream()))
+                sResp = sr.ReadToEnd();            
             dynamic resp = JsonConvert.DeserializeObject(sResp);
+
+            if (resp.features.Count < 1) {
+                MessageBox.Show("Please choose a spot within the U.S.A.");
+                return /*null*/;
+            }
+
             string sState = resp.features[0].attributes.STATE.ToString();
 
             // Find out what PADD zone the state is in
@@ -291,9 +305,32 @@ namespace Esri.APL.MilesPerDollar {
             // Find out the gallons/$1.00 in that PADD zone
             double nFuelCost = PADDZoneToFuelCost[sPADDZone];
 
-            // Find out the miles each vehicle can go
+            // Find out the miles per dollar each vehicle: (mi / gal) / (dollars / gal)            
+            // Map is in meters, so convert miles to meters
+            IEnumerable<double> vehicleMetersPerDollar =
+                SelectedVehicles.Select(vehicle => (vehicle.Mpg * METERS_PER_MILE) / nFuelCost);
 
+            string sDistsParam = String.Join(" ", vehicleMetersPerDollar.ToArray());
+            MapPoint ptStartLocNoZ = await QueuedTask.Run(() => {
+                MapPoint ptNoZ = MapPointBuilder.CreateMapPoint(ptStartLoc.X, ptStartLoc.Y, ptStartLoc.SpatialReference);
+                return ptNoZ;
+            });
+
+            // ARGH! No corresponding type for the needed GPFeatureRecordSetLayer parameter!
+            //TODO blog about this...mess
+            string sStartGeom = ptStartLocNoZ.ToJson();
+            string sStartLocParam = "{\"geometryType\":\"esriGeometryPoint\",\"features\":[{\"geometry\":" + sStartGeom + "}]}";
             // Run the query
+            string sGPUrl = Properties.Settings.Default.GPFindSA;
+            sGPUrl += String.Format("?Distances={0}&Start_Location={1}&f=json", sDistsParam, sStartLocParam);
+            HttpWebRequest reqSA = (HttpWebRequest)WebRequest.Create(sGPUrl);
+            using (StreamReader sr = new StreamReader(reqSA.GetResponse().GetResponseStream()))
+                sResp = sr.ReadToEnd();
+            resp = JsonConvert.DeserializeObject(sResp);
+
+            dynamic[] aryResPolys = new dynamic[] { resp.results[0].features };
+            IOrderedEnumerable<dynamic> aryResPolysAsc = aryResPolys.OrderBy(poly => poly.attributes.Shape_Area);
+            //return resp;
         }
         #endregion
 

@@ -10,6 +10,7 @@ using ArcGIS.Desktop.Framework.Contracts;
 using System.Net;
 using System.IO;
 using Newtonsoft.Json;
+using ArcGIS.Desktop.Framework.Threading.Tasks;
 
 namespace Esri.APL.MilesPerDollar {
     internal class MPDSATool : MapTool {
@@ -28,8 +29,21 @@ namespace Esri.APL.MilesPerDollar {
 
         protected override Task<bool> OnSketchCompleteAsync(Geometry geometry) {
             System.Diagnostics.Debug.WriteLine("Map tool sketch complete");
+
             //TODO blog about creating ViewModel static instance var so we can call it from codebehind
+            MapView mapView = MapView.Active;
+
             VehiclesPaneViewModel.instance.PerformAnalysis(geometry as MapPoint);
+
+            //Task<dynamic> saResult = QueuedTask.Run(() => {
+            //    return VehiclesPaneViewModel.instance.PerformAnalysis(geometry as MapPoint);
+            //});
+            //saResult.Wait();
+
+            //// Add a graphics overlay
+            //IDisposable overlay = AddOverlay()
+            //// Add graphics
+
 
             return base.OnSketchCompleteAsync(geometry);
         }
