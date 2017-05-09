@@ -16,18 +16,23 @@ using Excel;
 using System.Data;
 using ArcGIS.Core.Geometry;
 using Newtonsoft.Json;
+
 using System.Collections.Specialized;
-using System.Windows.Media;
 using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Core.Data;
 using ArcGIS.Desktop.Mapping;
+using ArcGIS.Core.CIM;
+using Newtonsoft.Json.Linq;
+using System.Windows.Media;
 
 namespace Esri.APL.MilesPerDollar {
     internal class VehiclesPaneViewModel : DockPane {
         // CONSTS
         private const string STATE_ALLOW_FIND_SA = "mpd_allow_find_servicearea_state";
         private const double METERS_PER_MILE = 1609.34;
+        // Colors need to be in order of descending MPG/polygon size
+        private List<Color> _vehicleColors = new List<Color>() { Colors.LightGreen, Colors.Crimson };
 
         // Thread locking objects
         protected object _lockXmlYears = new object();
@@ -138,13 +143,14 @@ namespace Esri.APL.MilesPerDollar {
         }
 
         private void OnSelectedVehiclesChanged(object sender, NotifyCollectionChangedEventArgs e) {
-            ObservableCollection<Vehicle> vehs = (ObservableCollection<Vehicle>)sender;
-            System.Linq.IOrderedEnumerable<Vehicle> ovehs = vehs.OrderByDescending(vehicle => vehicle.Mpg);
-
-            ovehs.First().Color = Colors.LightGreen.ToString();
-            ovehs.Last().Color = Colors.Crimson.ToString();
-
             System.Diagnostics.Debug.WriteLine("OnSelectedVehiclesChanged");
+            ObservableCollection<Vehicle> vehs = (ObservableCollection<Vehicle>)sender;
+            if (vehs.Count <= 0) return;
+
+            List<Vehicle> ovehs = vehs.OrderByDescending(vehicle => vehicle.Mpg).ToList();
+            for (int iVeh = 0; iVeh < ovehs.Count(); iVeh++) {
+                ovehs[iVeh].Color = _vehicleColors[iVeh].ToString();
+            }
         }
 
 
@@ -226,6 +232,11 @@ namespace Esri.APL.MilesPerDollar {
             _addSelectedVehicleCommand = new RelayCommand(() => AddSelectedVehicle(), () => CanAddSelectedVehicle());
             _removeSelectedVehicleCommand = new RelayCommand((selected) => RemoveSelectedVehicle(selected), () => true);
             _startSAAnalysisCommand = new RelayCommand(() => StartSAAnalysis(), () => CanStartSAAnalysis());
+
+            _driveDistPolys = new ObservableCollection<IDisposable>();
+            //DriveDistPolys.CollectionChanged += OnDriveDistPolysChanged;
+            _driveDistCircularBounds = new ObservableCollection<IDisposable>();
+            //DriveDistCircularBounds.CollectionChanged += OnDriveDistCircularBoundsChanged;
         }
 
         protected override Task InitializeAsync() {
@@ -266,6 +277,36 @@ namespace Esri.APL.MilesPerDollar {
         private ICommand _startSAAnalysisCommand;
         public ICommand StartSAAnalysisCommand => _startSAAnalysisCommand;
 
+        private ObservableCollection<IDisposable> _driveDistPolys;
+        public ObservableCollection<IDisposable> DriveDistPolys {
+            get { return _driveDistPolys;  }
+            set { _driveDistPolys = value; }
+        }
+        private ObservableCollection<IDisposable> _driveDistCircularBounds;
+        public ObservableCollection<IDisposable> DriveDistCircularBounds {
+            get { return _driveDistCircularBounds; }
+            set { _driveDistCircularBounds = value; }
+        }
+        //private void OnDriveDistPolysChanged(object sender, NotifyCollectionChangedEventArgs e) {
+        //    switch (e.Action) {
+        //        case NotifyCollectionChangedAction.Remove:
+        //        case NotifyCollectionChangedAction.Replace:
+        //        case NotifyCollectionChangedAction.Reset:
+        //            if (e.OldItems != null)
+        //                foreach (IDisposable graphic in e.OldItems) graphic.Dispose();
+        //            break;
+        //     }
+        //}
+        //private void OnDriveDistCircularBoundsChanged(object sender, NotifyCollectionChangedEventArgs e) {
+        //    switch (e.Action) {
+        //        case NotifyCollectionChangedAction.Remove:
+        //        case NotifyCollectionChangedAction.Replace:
+        //        case NotifyCollectionChangedAction.Reset:
+        //            if (e.OldItems != null)
+        //                foreach (IDisposable graphic in e.OldItems) graphic.Dispose();
+        //            break;
+        //     }
+        //}
         public bool CanStartSAAnalysis() {
             bool enoughVehiclesSelected = SelectedVehicles.Count > 0;
             bool mapPaneActive = FrameworkApplication.State.Contains(DAML.State.esri_mapping_mapPane);
@@ -280,7 +321,7 @@ namespace Esri.APL.MilesPerDollar {
             FrameworkApplication.SetCurrentToolAsync(MPDSATool.TOOL_ID);
         }
 
-        internal async Task PerformAnalysis(MapPoint ptStartLoc) {
+        internal async Task PerformAnalysis(MapPoint ptStartLoc, MapView mapView) {
             //TODO Progress/busy indicator
             string sReqUrl = Properties.Settings.Default.QryPointToState;
             string sReq = String.Format("{0}?returnGeometry=false&returnDistinctValues=false&geometry={1}&geometryType=esriGeometryPoint&f=json&outFields=*&spatialRel=esriSpatialRelIntersects",
@@ -288,16 +329,16 @@ namespace Esri.APL.MilesPerDollar {
             // Find out what state the user clicked; or report an error if outside the U.S.
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(sReq);
             string sResp;
-            using (StreamReader sr = new StreamReader(req.GetResponse().GetResponseStream()))
-                sResp = sr.ReadToEnd();            
-            dynamic resp = JsonConvert.DeserializeObject(sResp);
+            using (StreamReader sread = new StreamReader(req.GetResponse().GetResponseStream()))
+                sResp = sread.ReadToEnd();            
+            dynamic respPADDState = JsonConvert.DeserializeObject(sResp);
 
-            if (resp.features.Count < 1) {
+            if (respPADDState.features.Count < 1) {
                 MessageBox.Show("Please choose a spot within the U.S.A.");
                 return /*null*/;
             }
 
-            string sState = resp.features[0].attributes.STATE.ToString();
+            string sState = respPADDState.features[0].attributes.STATE.ToString();
 
             // Find out what PADD zone the state is in
             string sPADDZone = PaddStateToZone[sState];
@@ -324,12 +365,48 @@ namespace Esri.APL.MilesPerDollar {
             string sGPUrl = Properties.Settings.Default.GPFindSA;
             sGPUrl += String.Format("?Distances={0}&Start_Location={1}&f=json", sDistsParam, sStartLocParam);
             HttpWebRequest reqSA = (HttpWebRequest)WebRequest.Create(sGPUrl);
-            using (StreamReader sr = new StreamReader(reqSA.GetResponse().GetResponseStream()))
-                sResp = sr.ReadToEnd();
-            resp = JsonConvert.DeserializeObject(sResp);
+            using (StreamReader sread = new StreamReader(reqSA.GetResponse().GetResponseStream()))
+                sResp = sread.ReadToEnd();
+            JObject respAnalysis = JObject.Parse(sResp);
 
-            dynamic[] aryResPolys = new dynamic[] { resp.results[0].features };
-            IOrderedEnumerable<dynamic> aryResPolysAsc = aryResPolys.OrderBy(poly => poly.attributes.Shape_Area);
+            //JArray feats = ((respAnalysis.GetValue("results")[0] as JObject).GetValue("value") as JObject).GetValue("features") as JArray;
+            JArray feats = respAnalysis["results"][0]["value"]["features"] as JArray;
+
+            // Order descending so that largest polygon is added to the map first
+            List<JToken> aryResFeats = feats.OrderByDescending(feat => feat["attributes"]["Shape_Area"].ToObject<Double>()).ToList();
+
+            int iSR = respAnalysis["results"][0]["value"]["spatialReference"]["wkid"].ToObject<Int32>();
+            SpatialReference sr = await QueuedTask.Run<SpatialReference>(() => {
+                SpatialReference srTemp = SpatialReferenceBuilder.CreateSpatialReference(iSR);
+                return srTemp;
+            });
+
+            //TODO Support variable numbers of results
+            // Currently we assume 1 or 2 for simplicity assigning colors. More may require setting up a color ramp or scheme.
+            
+            // Dispose all graphics before calling DriveDistPolys.Clear(); 
+            foreach (IDisposable graphic in DriveDistPolys) {
+                graphic.Dispose();
+            }
+            DriveDistPolys.Clear();
+
+            for (int iRes = 0; iRes < aryResFeats.Count(); iRes++) {
+                string sGeom = aryResFeats[iRes]["geometry"].ToString();
+                Polygon poly = await QueuedTask.Run(() => {
+                    Polygon polyNoSR = PolygonBuilder.FromJson(sGeom);
+                    return PolygonBuilder.CreatePolygon(polyNoSR, sr);
+                });
+                CIMStroke outline = SymbolFactory.ConstructStroke(ColorFactory.BlackRGB, 1.0, SimpleLineStyle.Solid);
+                CIMPolygonSymbol symPoly = SymbolFactory.ConstructPolygonSymbol(
+                    ColorFactory.CreateRGBColor(_vehicleColors[iRes].R, _vehicleColors[iRes].G, _vehicleColors[iRes].B, 70), 
+                    SimpleFillStyle.Solid, outline);
+                CIMSymbolReference sym = symPoly.MakeSymbolReference();
+                CIMSymbolReference symDef = SymbolFactory.DefaultPolygonSymbol.MakeSymbolReference();
+                IDisposable graphic = await QueuedTask.Run(() => {
+                    return mapView.AddOverlay(poly, sym);
+                });
+                DriveDistPolys.Add(graphic);
+            }
             //return resp;
         }
         #endregion

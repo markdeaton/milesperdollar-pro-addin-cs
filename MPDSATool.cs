@@ -33,7 +33,7 @@ namespace Esri.APL.MilesPerDollar {
             //TODO blog about creating ViewModel static instance var so we can call it from codebehind
             MapView mapView = MapView.Active;
 
-            VehiclesPaneViewModel.instance.PerformAnalysis(geometry as MapPoint);
+            Task task = VehiclesPaneViewModel.instance.PerformAnalysis(geometry as MapPoint, mapView);
 
             //Task<dynamic> saResult = QueuedTask.Run(() => {
             //    return VehiclesPaneViewModel.instance.PerformAnalysis(geometry as MapPoint);
