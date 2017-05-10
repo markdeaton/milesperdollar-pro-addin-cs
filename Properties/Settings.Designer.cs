@@ -81,5 +81,25 @@ namespace Esri.APL.MilesPerDollar.Properties {
                 return ((string)(this["GPFindSA"]));
             }
         }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("pack://application:,,,/Esri.APL.MilesPerDollar;component/Resources/FE_1984-2018.x" +
+            "ml")]
+        public string VehicleInfoResourceUri {
+            get {
+                return ((string)(this["VehicleInfoResourceUri"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("pack://application:,,,/Esri.APL.MilesPerDollar;component/Resources/States2PADD.xm" +
+            "l")]
+        public string PADDZonesResourceUri {
+            get {
+                return ((string)(this["PADDZonesResourceUri"]));
+            }
+        }
     }
 }

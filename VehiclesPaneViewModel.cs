@@ -18,9 +18,7 @@ using ArcGIS.Core.Geometry;
 using Newtonsoft.Json;
 
 using System.Collections.Specialized;
-using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
-using ArcGIS.Core.Data;
 using ArcGIS.Desktop.Mapping;
 using ArcGIS.Core.CIM;
 using Newtonsoft.Json.Linq;
@@ -171,12 +169,13 @@ namespace Esri.APL.MilesPerDollar {
             PADDZoneToFuelCost.Add("IV", Double.Parse(priceRow[7].ToString()));
             PADDZoneToFuelCost.Add("V", Double.Parse(priceRow[8].ToString()));
         }
-        //TODO make this a project resource
+
         private void GetStatesPerPADDZone() {
-            string sPaddZonesUrl = Properties.Settings.Default.PADDZonesUrl;
-            //HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(sPaddZonesUrl);
-            //req.ContentType = "text/xml";
-            XDocument doc = XDocument.Load(sPaddZonesUrl);
+            Uri uri = new Uri(Properties.Settings.Default.PADDZonesResourceUri);
+            System.IO.Stream stIn = System.Windows.Application.GetResourceStream(uri).Stream;
+            XDocument doc = XDocument.Load(stIn);
+            //string sPaddZonesUrl = Properties.Settings.Default.PADDZonesUrl;
+            //XDocument doc = XDocument.Load(sPaddZonesUrl);
             foreach (XElement elt in doc.Root.Elements(XName.Get("state"))) {
                 PaddStateToZone.Add((string)elt.Attribute("name"), (string)elt.Attribute("padd"));
             }
@@ -184,7 +183,7 @@ namespace Esri.APL.MilesPerDollar {
         }
         private void GetVehicleData() {
             // Read vehicles data
-            Uri uri = new Uri("pack://application:,,,/Esri.APL.MilesPerDollar;component/Resources/FE_1984-2018.xml");
+            Uri uri = new Uri(Properties.Settings.Default.VehicleInfoResourceUri);
             System.IO.Stream stIn = System.Windows.Application.GetResourceStream(uri).Stream;
             _xmlAllVehicles = XDocument.Load(stIn);
         }
@@ -222,10 +221,8 @@ namespace Esri.APL.MilesPerDollar {
         #endregion
 
         #region CTOR & Initialization
-        protected VehiclesPaneViewModel() {
+        VehiclesPaneViewModel() {
             // Set up necessary defaults
-            //_readonlyVehicleYears = new ReadOnlyObservableCollection<string>(_vehicleYears);
-            //BindingOperations.EnableCollectionSynchronization(_readonlyVehicleYears, _lockXmlYears);
             _selectedVehicles = new ObservableCollection<Vehicle>();
             SelectedVehicles.CollectionChanged += OnSelectedVehiclesChanged;
 
@@ -237,6 +234,16 @@ namespace Esri.APL.MilesPerDollar {
             //DriveDistPolys.CollectionChanged += OnDriveDistPolysChanged;
             _driveDistCircularBounds = new ObservableCollection<IDisposable>();
             //DriveDistCircularBounds.CollectionChanged += OnDriveDistCircularBoundsChanged;
+        }
+        ~VehiclesPaneViewModel() {
+            FrameworkApplication.SetCurrentToolAsync(_previousActiveTool);
+            // Clear out any onscreen graphics
+            foreach (IDisposable graphic in DriveDistPolys) {
+                graphic.Dispose();
+            }
+            foreach (IDisposable graphic in DriveDistCircularBounds) {
+                graphic.Dispose();
+            }
         }
 
         protected override Task InitializeAsync() {
@@ -317,12 +324,17 @@ namespace Esri.APL.MilesPerDollar {
 
             return oktoStartSAAnalysis;
         }
+
+        //TODO Blog about programmatic invocation of invisible MapTool
+        string _previousActiveTool = null;
         private void StartSAAnalysis() {
+            _previousActiveTool = FrameworkApplication.CurrentTool;
             FrameworkApplication.SetCurrentToolAsync(MPDSATool.TOOL_ID);
         }
 
-        internal async Task PerformAnalysis(MapPoint ptStartLoc, MapView mapView) {
-            //TODO Progress/busy indicator
+
+        internal async Task PerformAnalysis(MapPoint ptStartLoc, MapView mapView, ProgressorSource ps) {
+            ps.Message = "Gathering and verifying parameter data...";
             string sReqUrl = Properties.Settings.Default.QryPointToState;
             string sReq = String.Format("{0}?returnGeometry=false&returnDistinctValues=false&geometry={1}&geometryType=esriGeometryPoint&f=json&outFields=*&spatialRel=esriSpatialRelIntersects",
                             sReqUrl, ptStartLoc.ToJson());
@@ -358,18 +370,33 @@ namespace Esri.APL.MilesPerDollar {
             });
 
             // ARGH! No corresponding type for the needed GPFeatureRecordSetLayer parameter!
-            //TODO blog about this...mess
+            //TODO blog about this...stuff
             string sStartGeom = ptStartLocNoZ.ToJson();
             string sStartLocParam = "{\"geometryType\":\"esriGeometryPoint\",\"features\":[{\"geometry\":" + sStartGeom + "}]}";
+
+
             // Run the query
+            ps.Message = "Running the drive distance analysis...";
             string sGPUrl = Properties.Settings.Default.GPFindSA;
             sGPUrl += String.Format("?Distances={0}&Start_Location={1}&f=json", sDistsParam, sStartLocParam);
             HttpWebRequest reqSA = (HttpWebRequest)WebRequest.Create(sGPUrl);
-            using (StreamReader sread = new StreamReader(reqSA.GetResponse().GetResponseStream()))
-                sResp = sread.ReadToEnd();
+            HttpWebResponse wr;
+            try {
+                wr = (HttpWebResponse)reqSA.GetResponse();
+                if (wr.StatusCode != HttpStatusCode.OK) {
+                    MessageBox.Show("Error running analysis: " + wr.StatusDescription);
+                    return;
+                }
+            } catch (WebException e) {
+                MessageBox.Show("Error running analysis: " + e.Message);
+                return;
+            }
+
+            using (StreamReader sread = new StreamReader(wr.GetResponseStream()))
+            sResp = sread.ReadToEnd();
+            
             JObject respAnalysis = JObject.Parse(sResp);
 
-            //JArray feats = ((respAnalysis.GetValue("results")[0] as JObject).GetValue("value") as JObject).GetValue("features") as JArray;
             JArray feats = respAnalysis["results"][0]["value"]["features"] as JArray;
 
             // Order descending so that largest polygon is added to the map first
@@ -389,6 +416,10 @@ namespace Esri.APL.MilesPerDollar {
                 graphic.Dispose();
             }
             DriveDistPolys.Clear();
+            foreach (IDisposable graphic in DriveDistCircularBounds) {
+                graphic.Dispose();
+            }
+            DriveDistCircularBounds.Clear();
 
             for (int iRes = 0; iRes < aryResFeats.Count(); iRes++) {
                 string sGeom = aryResFeats[iRes]["geometry"].ToString();
