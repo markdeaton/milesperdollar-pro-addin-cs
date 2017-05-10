@@ -236,13 +236,23 @@ namespace Esri.APL.MilesPerDollar {
             //DriveDistCircularBounds.CollectionChanged += OnDriveDistCircularBoundsChanged;
         }
         ~VehiclesPaneViewModel() {
-            FrameworkApplication.SetCurrentToolAsync(_previousActiveTool);
-            // Clear out any onscreen graphics
-            foreach (IDisposable graphic in DriveDistPolys) {
-                graphic.Dispose();
+            try {
+                FrameworkApplication.SetCurrentToolAsync(_previousActiveTool);
+            } catch (Exception e) {
+                System.Diagnostics.Debug.WriteLine("Error setting previous tool: " + e.Message);
             }
-            foreach (IDisposable graphic in DriveDistCircularBounds) {
-                graphic.Dispose();
+            // Clear out any onscreen graphics
+            try {
+                foreach (IDisposable graphic in DriveDistPolys)
+                    graphic.Dispose();
+            } catch (Exception e) {
+                System.Diagnostics.Debug.WriteLine("Error clearing drive distance polygons: " + e.Message);
+            }
+            try {
+                foreach (IDisposable graphic in DriveDistCircularBounds) 
+                    graphic.Dispose();
+            } catch (Exception e) {
+                System.Diagnostics.Debug.WriteLine("Error clearing drive distance bounds: " + e.Message);
             }
         }
 
@@ -471,7 +481,7 @@ namespace Esri.APL.MilesPerDollar {
         /// <summary>
         /// Text shown near the top of the DockPane.
         /// </summary>
-        private string _heading = "Vehicles";
+        private string _heading = "Miles per Dollar";
         public string Heading {
             get { return _heading; }
             set {
@@ -492,6 +502,15 @@ namespace Esri.APL.MilesPerDollar {
 
     #region Value Converters
 
+    [ValueConversion(typeof(int), typeof(Visibility))]
+    public class CollectionCountToIsVisibileConverter : IValueConverter {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+            return (int)value > 0 ? Visibility.Visible : Visibility.Hidden;
+        }
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+            throw new NotImplementedException();
+        }
+    }
     [ValueConversion(typeof(object), typeof(Visibility))]
     public class NullToIsVisibleConverter : IValueConverter {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {

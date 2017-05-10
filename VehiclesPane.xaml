@@ -9,6 +9,7 @@
              d:DesignHeight="300" d:DesignWidth="300"
              d:DataContext="{Binding Path=ui.VehiclesPaneViewModel}">
     <UserControl.Resources>
+        <ui:CollectionCountToIsVisibileConverter x:Key="collectionCountToVisibility"/>
         <ui:NullToIsVisibleConverter x:Key="nullToIsVisible"/>
         <ui:NullToIsEnabledConverter x:Key="nullToIsEnabled"/>
         <ui:VehicleXmlToDescriptionString x:Key="vehicleXmlToString"/>
@@ -25,9 +26,11 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <DockPanel Grid.Row="0" LastChildFill="true" KeyboardNavigation.TabNavigation="Local" Height="30">
-            <TextBlock Grid.Column="1" Text="{Binding Heading}" VerticalAlignment="Center" HorizontalAlignment="Center"
-                    FontSize="16" FontWeight="Light">
+        <DockPanel Grid.Row="0" LastChildFill="true" KeyboardNavigation.TabNavigation="Local">
+            <Image DockPanel.Dock="Left" Source="Images/George.png" Height="64"/>
+            <TextBlock Grid.Column="1" Text="{Binding Heading}" DockPanel.Dock="Top"
+                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                       FontSize="20" FontWeight="Light" Margin="0,0,32,0">
                 <TextBlock.ToolTip>
                     <WrapPanel Orientation="Vertical" MaxWidth="300">
                         <TextBlock Text="{Binding Heading}" TextWrapping="Wrap"/>
@@ -82,7 +85,7 @@
                     Style="{StaticResource Esri_SimpleButton}" Command="{Binding AddSelectedVehicleCommand}">Add Vehicle</Button>
             <ListBox x:Name="lstVehiclesSelected" BorderThickness="1,1,1,1" Margin="0,8,0,0" 
                      DockPanel.Dock="Top" Height="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     ItemsSource="{Binding SelectedVehicles}">
+                     ItemsSource="{Binding SelectedVehicles}" Visibility="{Binding SelectedVehicles.Count, Converter={StaticResource collectionCountToVisibility}}">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -92,7 +95,7 @@
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                       <Grid HorizontalAlignment="Stretch" Background="{x:Null}" Opacity="1">
+                        <Grid HorizontalAlignment="Stretch" Background="{x:Null}" Opacity="1">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -109,10 +112,11 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
-            <Button Height="Auto" HorizontalAlignment="Center" Margin="0,8,0,0" DockPanel.Dock="Top" Command="{Binding StartSAAnalysisCommand}">
-                    <TextBlock Width="Auto" TextAlignment="Center" TextWrapping="Wrap" Margin="5,2,5,2">
-                        Zoom to an area of interest. Click here, then click a start location.
-                    </TextBlock>
+            <Button Height="Auto" HorizontalAlignment="Center" Margin="0,8,0,0" DockPanel.Dock="Top" Command="{Binding StartSAAnalysisCommand}"
+                    ToolTip="Make sure a map tab is open. Select one or two vehicles. Zoom to an area of interest. Then click this button. Then click a start location." ToolTipService.ShowOnDisabled="True">
+                <TextBlock Width="Auto" TextAlignment="Center" TextWrapping="Wrap" Margin="5,2,5,2">
+                        Start Analysis
+                </TextBlock>
             </Button>
         </DockPanel>
     </Grid>

@@ -170,6 +170,9 @@
   <ItemGroup>
     <Resource Include="Resources\States2PADD.xml" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\George.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:
