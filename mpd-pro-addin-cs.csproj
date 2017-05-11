@@ -173,6 +173,9 @@
   <ItemGroup>
     <Resource Include="Images\George.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\vehicle-feather20.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:

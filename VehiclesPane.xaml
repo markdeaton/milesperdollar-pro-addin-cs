@@ -31,89 +31,108 @@
             <TextBlock Grid.Column="1" Text="{Binding Heading}" DockPanel.Dock="Top"
                        VerticalAlignment="Center" HorizontalAlignment="Center"
                        FontSize="20" FontWeight="Light" Margin="0,0,32,0">
-                <TextBlock.ToolTip>
+                <!--<TextBlock.ToolTip>
                     <WrapPanel Orientation="Vertical" MaxWidth="300">
                         <TextBlock Text="{Binding Heading}" TextWrapping="Wrap"/>
                     </WrapPanel>
-                </TextBlock.ToolTip>
+                </TextBlock.ToolTip>-->
             </TextBlock>
         </DockPanel>
         <!-- Vehicle selection dropdowns -->
         <Grid Grid.Row="1">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <!-- Combo prompt technique thanks to stackoverflow: http://stackoverflow.com/questions/1426050/how-to-display-default-text-select-team-in-combo-box-on-pageload-in-wpf -->
-            <ComboBox x:Name="ddlYear" DockPanel.Dock="Top" HorizontalAlignment="Stretch" Grid.Row="0" Grid.Column="0" 
-                      IsReadOnly="True" Margin="0,3,3,0" VerticalAlignment="Center"
+            <ComboBox x:Name="ddlYear" DockPanel.Dock="Top" Grid.Row="0" Grid.Column="0" 
+                      IsReadOnly="True" Margin="8,3,8,0" VerticalAlignment="Center"
                       ItemsSource="{Binding VehicleYears}" SelectedItem="{Binding Path=SelectedVehicleYear, Mode=TwoWay}"/>
             <TextBlock Grid.Row="0" Grid.Column="0"
                         IsHitTestVisible="False"
-                        Text="&lt;Select a Vehicle Year&gt;" Margin="3,3,0,0" VerticalAlignment="Center" HorizontalAlignment="Left"
-                       Visibility="{Binding SelectedValue, ElementName=ddlYear, Converter={StaticResource nullToIsVisible}}"/>
+                        Text="&lt;Select a Vehicle Year&gt;" Margin="10,0,8,0"
+                       Visibility="{Binding SelectedValue, ElementName=ddlYear, Converter={StaticResource nullToIsVisible}}" VerticalAlignment="Center" Padding="0,2,0,0"/>
 
-            <ComboBox x:Name="ddlMake" Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" Margin="3,3,0,0"
+            <ComboBox x:Name="ddlMake" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" IsReadOnly="True" Margin="8,3,8,0"
                       ItemsSource="{Binding VehicleMakes}" SelectedItem="{Binding Path=SelectedVehicleMake, Mode=TwoWay}"
                       IsEnabled="{Binding SelectedVehicleYear, Converter={StaticResource nullToIsEnabled}}"/>
-            <TextBlock Grid.Row="0" Grid.Column="1"
-                        IsHitTestVisible="False"
-                        Text="&lt;Select a Vehicle Make&gt;" Margin="6,3,0,0" VerticalAlignment="Center"
-                       Visibility="{Binding SelectedItem, ElementName=ddlMake, Converter={StaticResource nullToIsVisible}}"/>
-            <ComboBox x:Name="ddlModel" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="0" VerticalAlignment="Top" IsReadOnly="True" Margin="0,3,3,0"
-                      ItemsSource="{Binding VehicleModels}" SelectedItem="{Binding Path=SelectedVehicleModel, Mode=TwoWay}"
-                      IsEnabled="{Binding SelectedVehicleMake, Converter={StaticResource nullToIsEnabled}}"/>
             <TextBlock Grid.Row="1" Grid.Column="0"
                         IsHitTestVisible="False"
-                        Text="&lt;Select a Vehicle Model&gt;" Margin="3,3,0,0" VerticalAlignment="Center"
-                       Visibility="{Binding SelectedItem, ElementName=ddlModel, Converter={StaticResource nullToIsVisible}}"/>
-            <ComboBox x:Name="ddlType" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="1" VerticalAlignment="Top" IsReadOnly="True" Margin="3,3,0,0"
-                      ItemsSource="{Binding VehicleTypes}" SelectedItem="{Binding Path=SelectedVehicleType, Mode=TwoWay}"
-                      IsEnabled="{Binding SelectedVehicleModel, Converter={StaticResource nullToIsEnabled}}"/>
-            <TextBlock Grid.Row="1" Grid.Column="1"
+                        Text="&lt;Select a Vehicle Make&gt;" Margin="10,0,8,0" VerticalAlignment="Center"
+                       Visibility="{Binding SelectedItem, ElementName=ddlMake, Converter={StaticResource nullToIsVisible}}" Padding="0,2,0,0"/>
+            <ComboBox x:Name="ddlModel" HorizontalAlignment="Stretch" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" IsReadOnly="True" Margin="8,3,8,0"
+                      ItemsSource="{Binding VehicleModels}" SelectedItem="{Binding Path=SelectedVehicleModel, Mode=TwoWay}"
+                      IsEnabled="{Binding SelectedVehicleMake, Converter={StaticResource nullToIsEnabled}}"/>
+            <TextBlock Grid.Row="2" Grid.Column="0"
                         IsHitTestVisible="False"
-                        Text="&lt;Select a Vehicle Type&gt;" Margin="6,0,3,0" VerticalAlignment="Center"
-                       Visibility="{Binding SelectedItem, ElementName=ddlType, Converter={StaticResource nullToIsVisible}}"/>
+                        Text="&lt;Select a Vehicle Model&gt;" Margin="10,0,8,0" VerticalAlignment="Center"
+                       Visibility="{Binding SelectedItem, ElementName=ddlModel, Converter={StaticResource nullToIsVisible}}" Padding="0,2,0,0"/>
+            <ComboBox x:Name="ddlType" HorizontalAlignment="Stretch" Grid.Row="3" Grid.Column="0" IsReadOnly="True" Margin="8,0"
+                      ItemsSource="{Binding VehicleTypes}" SelectedItem="{Binding Path=SelectedVehicleType, Mode=TwoWay}"
+                      IsEnabled="{Binding SelectedVehicleModel, Converter={StaticResource nullToIsEnabled}}" VerticalAlignment="Center"/>
+            <TextBlock Grid.Row="3" Grid.Column="0"
+                        IsHitTestVisible="False"
+                        Text="&lt;Select a Vehicle Type&gt;" Margin="10,4,8,0"
+                       Visibility="{Binding SelectedItem, ElementName=ddlType, Converter={StaticResource nullToIsVisible}}" Padding="0,2,0,8" VerticalAlignment="Bottom"/>
         </Grid>
         <DockPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,1">
             <Button x:Name="btnAddVehicle" Padding="8,3,8,3" HorizontalAlignment="Center" DockPanel.Dock="Top" 
-                    Style="{StaticResource Esri_SimpleButton}" Command="{Binding AddSelectedVehicleCommand}">Add Vehicle</Button>
+                Style="{StaticResource Esri_SimpleButton}" Command="{Binding AddSelectedVehicleCommand}">Add Vehicle</Button>
+
             <ListBox x:Name="lstVehiclesSelected" BorderThickness="1,1,1,1" Margin="0,8,0,0" 
                      DockPanel.Dock="Top" Height="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ItemsSource="{Binding SelectedVehicles}" Visibility="{Binding SelectedVehicles.Count, Converter={StaticResource collectionCountToVisibility}}">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                        <Setter Property="TextBlock.Foreground" Value="{Binding Color}"/>
-                        <Setter Property="Background" Value="{DynamicResource Esri_Gray120}"/>
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                        <!--    <Setter Property="TextBlock.Foreground" Value="{Binding Color}"/>
+                        <Setter Property="Background" Value="{DynamicResource Esri_Gray120}"/>-->
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <Grid HorizontalAlignment="Stretch" Background="{x:Null}" Opacity="1">
+                        <Grid HorizontalAlignment="Stretch" Background="{x:Null}" Opacity="1" Margin="0,0,0,3">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{Binding Path=ListDisplayText}" TextTrimming="CharacterEllipsis" Margin="0,0,0,0"/>
-                            <!-- Icon used under Creative Commons BY-SA 3.0 license; see https://commons.wikimedia.org/wiki/File:Antu_task-reject.svg -->
-                            <Button Command="{Binding Path=DataContext.RemoveSelectedVehicleCommand, RelativeSource={RelativeSource Mode=FindAncestor,AncestorType={x:Type UserControl}}}" 
+                            <TextBlock Grid.Column="0" Text="{Binding ListDisplayText}" ToolTip="{Binding ListDisplayText}"
+                                       TextTrimming="CharacterEllipsis" Margin="0,0,2,0"
+                                       HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="{StaticResource Esri_Gray120}"/>
+                            <Button Grid.Column="1" Command="{Binding Path=DataContext.RemoveSelectedVehicleCommand, RelativeSource={RelativeSource Mode=FindAncestor,AncestorType={x:Type UserControl}}}" 
                                     CommandParameter="{Binding}"
                                     FocusVisualStyle="{x:Null}"
-                                    HorizontalAlignment="Right" BorderThickness="0" Background="{x:Null}">
-                                <Image Source="Images/vehicle-delete.png" Grid.Column="1" Height="16" Width="16"/>
+                                    HorizontalAlignment="Right" BorderThickness="0" 
+                                    Background="{x:Null}" Foreground="{StaticResource Esri_Black}"
+                                    ToolTip="Remove this vehicle" Margin="0">
+                                [X]
+                                <!--<Image Source="Images/vehicle-delete.png" Grid.Column="1" Height="16" Width="16"/>-->
                             </Button>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
-            <Button Height="Auto" HorizontalAlignment="Center" Margin="0,8,0,0" DockPanel.Dock="Top" Command="{Binding StartSAAnalysisCommand}"
-                    ToolTip="Make sure a map tab is open. Select one or two vehicles. Zoom to an area of interest. Then click this button. Then click a start location." ToolTipService.ShowOnDisabled="True">
+            <Button Height="Auto" HorizontalAlignment="Center" Margin="0,8,0,0" DockPanel.Dock="Top" Command="{Binding StartSAAnalysisCommand}" Style="{StaticResource Esri_SimpleButton}"
+                    ToolTipService.ShowOnDisabled="True">
+                <Button.ToolTip>
+                    <TextBlock>
+                        1) Make sure a map tab is open.
+                        <LineBreak/>
+                        2) Select one or two vehicles.
+                        <LineBreak/>
+                        3) Zoom to an area of interest.
+                        <LineBreak/>
+                        4) Then click this button.
+                        <LineBreak/>
+                        5) Click a start location on the map.
+                    </TextBlock>
+                </Button.ToolTip>
                 <TextBlock Width="Auto" TextAlignment="Center" TextWrapping="Wrap" Margin="5,2,5,2">
                         Start Analysis
                 </TextBlock>

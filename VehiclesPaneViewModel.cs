@@ -29,11 +29,12 @@ namespace Esri.APL.MilesPerDollar {
         // CONSTS
         private const string STATE_ALLOW_FIND_SA = "mpd_allow_find_servicearea_state";
         private const double METERS_PER_MILE = 1609.34;
+        private const float RESULT_OPACITY_PCT = 70;
         // Colors need to be in order of descending MPG/polygon size
-        private List<Color> _vehicleColors = new List<Color>() { Colors.LightGreen, Colors.Crimson };
+        private readonly List<Color> _vehicleColors = new List<Color>() { Colors.LightGreen, Colors.Crimson };
 
         // Thread locking objects
-        protected object _lockXmlYears = new object();
+        //protected object _lockXmlYears = new object();
 
         #region Model variables and properties
 
@@ -47,6 +48,7 @@ namespace Esri.APL.MilesPerDollar {
 
         private string _selectedVehicleYear, _selectedVehicleMake, _selectedVehicleModel, _selectedVehicleType;
         private XElement _selectedVehicle;
+        private string _selectedPADDZone;
 
         private Dictionary<string, double> _paddZoneToFuelCost = new Dictionary<string, double>();
         public Dictionary<string, double> PADDZoneToFuelCost {
@@ -140,6 +142,14 @@ namespace Esri.APL.MilesPerDollar {
             }
         }
 
+        public string SelectedPADDZone {
+            get {
+                return _selectedPADDZone;
+            }
+            set {
+                SetProperty(ref _selectedPADDZone, value);
+            }
+        }
         private void OnSelectedVehiclesChanged(object sender, NotifyCollectionChangedEventArgs e) {
             System.Diagnostics.Debug.WriteLine("OnSelectedVehiclesChanged");
             ObservableCollection<Vehicle> vehs = (ObservableCollection<Vehicle>)sender;
@@ -230,12 +240,12 @@ namespace Esri.APL.MilesPerDollar {
             _removeSelectedVehicleCommand = new RelayCommand((selected) => RemoveSelectedVehicle(selected), () => true);
             _startSAAnalysisCommand = new RelayCommand(() => StartSAAnalysis(), () => CanStartSAAnalysis());
 
-            _driveDistPolys = new ObservableCollection<IDisposable>();
+            _results = new ObservableCollection<Result>();
             //DriveDistPolys.CollectionChanged += OnDriveDistPolysChanged;
-            _driveDistCircularBounds = new ObservableCollection<IDisposable>();
+            //_driveDistCircularBounds = new ObservableCollection<IDisposable>();
             //DriveDistCircularBounds.CollectionChanged += OnDriveDistCircularBoundsChanged;
         }
-        ~VehiclesPaneViewModel() {
+        protected override Task UninitializeAsync() {
             try {
                 FrameworkApplication.SetCurrentToolAsync(_previousActiveTool);
             } catch (Exception e) {
@@ -243,17 +253,27 @@ namespace Esri.APL.MilesPerDollar {
             }
             // Clear out any onscreen graphics
             try {
-                foreach (IDisposable graphic in DriveDistPolys)
-                    graphic.Dispose();
+                foreach (Result result in Results) {
+                    result.DriveServiceAreaGraphic.Dispose();
+                    result.DriveCircularBoundGraphic.Dispose();
+                }                
             } catch (Exception e) {
-                System.Diagnostics.Debug.WriteLine("Error clearing drive distance polygons: " + e.Message);
+                System.Diagnostics.Debug.WriteLine("Error clearing result polygons: " + e.Message);
             }
-            try {
-                foreach (IDisposable graphic in DriveDistCircularBounds) 
-                    graphic.Dispose();
-            } catch (Exception e) {
-                System.Diagnostics.Debug.WriteLine("Error clearing drive distance bounds: " + e.Message);
-            }
+            //try {
+            //    foreach (IDisposable graphic in Results)
+            //        graphic.Dispose();
+            //} catch (Exception e) {
+            //    System.Diagnostics.Debug.WriteLine("Error clearing drive distance polygons: " + e.Message);
+            //}
+            //try {
+            //    foreach (IDisposable graphic in DriveDistCircularBounds) 
+            //        graphic.Dispose();
+            //} catch (Exception e) {
+            //    System.Diagnostics.Debug.WriteLine("Error clearing drive distance bounds: " + e.Message);
+            //}
+
+            return base.UninitializeAsync();
         }
 
         protected override Task InitializeAsync() {
@@ -294,16 +314,16 @@ namespace Esri.APL.MilesPerDollar {
         private ICommand _startSAAnalysisCommand;
         public ICommand StartSAAnalysisCommand => _startSAAnalysisCommand;
 
-        private ObservableCollection<IDisposable> _driveDistPolys;
-        public ObservableCollection<IDisposable> DriveDistPolys {
-            get { return _driveDistPolys;  }
-            set { _driveDistPolys = value; }
+        private ObservableCollection<Result> _results;
+        public ObservableCollection<Result> Results {
+            get { return _results;  }
+            set { SetProperty(ref _results, value); }
         }
-        private ObservableCollection<IDisposable> _driveDistCircularBounds;
-        public ObservableCollection<IDisposable> DriveDistCircularBounds {
-            get { return _driveDistCircularBounds; }
-            set { _driveDistCircularBounds = value; }
-        }
+        //private ObservableCollection<IDisposable> _driveDistCircularBounds;
+        //public ObservableCollection<IDisposable> DriveDistCircularBounds {
+        //    get { return _driveDistCircularBounds; }
+        //    set { _driveDistCircularBounds = value; }
+        //}
         //private void OnDriveDistPolysChanged(object sender, NotifyCollectionChangedEventArgs e) {
         //    switch (e.Action) {
         //        case NotifyCollectionChangedAction.Remove:
@@ -363,15 +383,16 @@ namespace Esri.APL.MilesPerDollar {
             string sState = respPADDState.features[0].attributes.STATE.ToString();
 
             // Find out what PADD zone the state is in
-            string sPADDZone = PaddStateToZone[sState];
+            SelectedPADDZone = PaddStateToZone[sState];
 
             // Find out the gallons/$1.00 in that PADD zone
-            double nFuelCost = PADDZoneToFuelCost[sPADDZone];
+            double nFuelCost = PADDZoneToFuelCost[SelectedPADDZone];
 
             // Find out the miles per dollar each vehicle: (mi / gal) / (dollars / gal)            
             // Map is in meters, so convert miles to meters
+            Vehicle[] orderedVehicles = SelectedVehicles.OrderBy(vehicle => vehicle.Mpg).ToArray<Vehicle>();
             IEnumerable<double> vehicleMetersPerDollar =
-                SelectedVehicles.Select(vehicle => (vehicle.Mpg * METERS_PER_MILE) / nFuelCost);
+                orderedVehicles.Select(vehicle => (vehicle.Mpg * METERS_PER_MILE) / nFuelCost);
 
             string sDistsParam = String.Join(" ", vehicleMetersPerDollar.ToArray());
             MapPoint ptStartLocNoZ = await QueuedTask.Run(() => {
@@ -409,8 +430,8 @@ namespace Esri.APL.MilesPerDollar {
 
             JArray feats = respAnalysis["results"][0]["value"]["features"] as JArray;
 
-            // Order descending so that largest polygon is added to the map first
-            List<JToken> aryResFeats = feats.OrderByDescending(feat => feat["attributes"]["Shape_Area"].ToObject<Double>()).ToList();
+            // Order so that largest polygon can be added to the map first
+            List<JToken> aryResFeats = feats.OrderBy(feat => feat["attributes"]["Shape_Area"].ToObject<Double>()).ToList();
 
             int iSR = respAnalysis["results"][0]["value"]["spatialReference"]["wkid"].ToObject<Int32>();
             SpatialReference sr = await QueuedTask.Run<SpatialReference>(() => {
@@ -422,16 +443,14 @@ namespace Esri.APL.MilesPerDollar {
             // Currently we assume 1 or 2 for simplicity assigning colors. More may require setting up a color ramp or scheme.
             
             // Dispose all graphics before calling DriveDistPolys.Clear(); 
-            foreach (IDisposable graphic in DriveDistPolys) {
-                graphic.Dispose();
+            foreach (Result result in Results) {
+                result.DriveServiceAreaGraphic?.Dispose();
+                result.DriveCircularBoundGraphic?.Dispose();
             }
-            DriveDistPolys.Clear();
-            foreach (IDisposable graphic in DriveDistCircularBounds) {
-                graphic.Dispose();
-            }
-            DriveDistCircularBounds.Clear();
+            Results.Clear();
 
-            for (int iRes = 0; iRes < aryResFeats.Count(); iRes++) {
+            //TODO Verify assumption that results are in same order as distances supplied in the GP svc dist parameter
+            for (int iRes = aryResFeats.Count() - 1; iRes >= 0; iRes--) {
                 string sGeom = aryResFeats[iRes]["geometry"].ToString();
                 Polygon poly = await QueuedTask.Run(() => {
                     Polygon polyNoSR = PolygonBuilder.FromJson(sGeom);
@@ -439,14 +458,17 @@ namespace Esri.APL.MilesPerDollar {
                 });
                 CIMStroke outline = SymbolFactory.ConstructStroke(ColorFactory.BlackRGB, 1.0, SimpleLineStyle.Solid);
                 CIMPolygonSymbol symPoly = SymbolFactory.ConstructPolygonSymbol(
-                    ColorFactory.CreateRGBColor(_vehicleColors[iRes].R, _vehicleColors[iRes].G, _vehicleColors[iRes].B, 70), 
+                    ColorFactory.CreateRGBColor(_vehicleColors[iRes].R, _vehicleColors[iRes].G, _vehicleColors[iRes].B, RESULT_OPACITY_PCT), 
                     SimpleFillStyle.Solid, outline);
                 CIMSymbolReference sym = symPoly.MakeSymbolReference();
                 CIMSymbolReference symDef = SymbolFactory.DefaultPolygonSymbol.MakeSymbolReference();
                 IDisposable graphic = await QueuedTask.Run(() => {
                     return mapView.AddOverlay(poly, sym);
                 });
-                DriveDistPolys.Add(graphic);
+                Result result = new Result(orderedVehicles[iRes]);
+                result.DriveServiceArea = poly;
+                result.DriveServiceAreaGraphic = graphic;
+                Results.Add(result);
             }
             //return resp;
         }
@@ -482,6 +504,7 @@ namespace Esri.APL.MilesPerDollar {
         /// Text shown near the top of the DockPane.
         /// </summary>
         private string _heading = "Miles per Dollar";
+
         public string Heading {
             get { return _heading; }
             set {
@@ -639,6 +662,63 @@ namespace Esri.APL.MilesPerDollar {
 
             set {
                 _mpg = value;
+            }
+        }
+    }
+    public class Result : PropertyChangedBase {
+        private Vehicle _vehicle;
+        private Polygon _driveServiceArea;
+        private Polygon _driveCircularBound;
+        private IDisposable _driveServiceAreaGraphic, _driveCircularBoundGraphic;
+
+        public Result(Vehicle vehicle) {
+            this.Vehicle = vehicle;
+        }
+
+        public Vehicle Vehicle {
+            get {
+                return _vehicle;
+            }
+            set {
+                SetProperty(ref _vehicle, value);
+            }
+        }
+
+        public Polygon DriveServiceArea {
+            get {
+                return _driveServiceArea;
+            }
+            set {
+                SetProperty(ref _driveServiceArea, value);
+            }
+        }
+
+        public Polygon DriveCircularBound {
+            get {
+                return _driveCircularBound;
+            }
+            set {
+                SetProperty(ref _driveCircularBound, value);
+            }
+        }
+
+        public IDisposable DriveServiceAreaGraphic {
+            get {
+                return _driveServiceAreaGraphic;
+            }
+
+            set {
+                _driveServiceAreaGraphic = value;
+            }
+        }
+
+        public IDisposable DriveCircularBoundGraphic {
+            get {
+                return _driveCircularBoundGraphic;
+            }
+
+            set {
+                _driveCircularBoundGraphic = value;
             }
         }
     }
