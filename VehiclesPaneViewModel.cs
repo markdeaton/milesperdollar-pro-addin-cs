@@ -28,7 +28,7 @@ namespace Esri.APL.MilesPerDollar {
     internal class VehiclesPaneViewModel : DockPane {
         // CONSTS
         private const string STATE_ALLOW_FIND_SA = "mpd_allow_find_servicearea_state";
-        private const double METERS_PER_MILE = 1609.34;
+        public static readonly double METERS_PER_MILE = 1609.34;
         private const float RESULT_OPACITY_PCT = 70;
         // Colors need to be in order of descending MPG/polygon size
         private readonly List<Color> _vehicleColors = new List<Color>() { Colors.LightGreen, Colors.Crimson };
@@ -142,6 +142,16 @@ namespace Esri.APL.MilesPerDollar {
             }
         }
 
+        private ObservableCollection<Result> _results = new ObservableCollection<Result>();
+        private object _lockResults = new object(); // locking object
+        public ObservableCollection<Result> Results {
+            get { return _results; }
+            set { SetProperty(ref _results, value); }
+        }
+
+        private ReadOnlyObservableCollection<Result> _readOnlyResults;
+        public ReadOnlyObservableCollection<Result> ReadOnlyResults => _readOnlyResults;
+
         public string SelectedPADDZone {
             get {
                 return _selectedPADDZone;
@@ -163,39 +173,51 @@ namespace Esri.APL.MilesPerDollar {
 
 
         private void GetFuelPricePerPADDZone() {
-            string sFuelPriceDataUrl = Properties.Settings.Default.FuelCostUrl;
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(sFuelPriceDataUrl);
-            req.ContentType = "application/ms-excel";
-            Stream resp = req.GetResponse().GetResponseStream();
-            MemoryStream ms = new MemoryStream(); resp.CopyTo(ms);
-            IExcelDataReader xldr = ExcelReaderFactory.CreateBinaryReader(ms);
-            DataTable priceSheet = xldr.AsDataSet().Tables[2];
-            DataRow priceRow = priceSheet.Rows[priceSheet.Rows.Count - 2];
-            PADDZoneToFuelCost.Add("I-A", Double.Parse(priceRow[2].ToString()));
-            PADDZoneToFuelCost.Add("I-B", Double.Parse(priceRow[3].ToString()));
-            PADDZoneToFuelCost.Add("I-C", Double.Parse(priceRow[4].ToString()));
-            PADDZoneToFuelCost.Add("II", Double.Parse(priceRow[5].ToString()));
-            PADDZoneToFuelCost.Add("III", Double.Parse(priceRow[6].ToString()));
-            PADDZoneToFuelCost.Add("IV", Double.Parse(priceRow[7].ToString()));
-            PADDZoneToFuelCost.Add("V", Double.Parse(priceRow[8].ToString()));
+            try { 
+                string sFuelPriceDataUrl = Properties.Settings.Default.FuelCostUrl;
+                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(sFuelPriceDataUrl);
+                req.ContentType = "application/ms-excel";
+                Stream resp = null;
+                    resp = req.GetResponse().GetResponseStream();
+                MemoryStream ms = new MemoryStream(); resp.CopyTo(ms);
+                IExcelDataReader xldr = ExcelReaderFactory.CreateBinaryReader(ms);
+                DataTable priceSheet = xldr.AsDataSet().Tables[2];
+                DataRow priceRow = priceSheet.Rows[priceSheet.Rows.Count - 2];
+                PADDZoneToFuelCost.Add("I-A", Double.Parse(priceRow[2].ToString()));
+                PADDZoneToFuelCost.Add("I-B", Double.Parse(priceRow[3].ToString()));
+                PADDZoneToFuelCost.Add("I-C", Double.Parse(priceRow[4].ToString()));
+                PADDZoneToFuelCost.Add("II", Double.Parse(priceRow[5].ToString()));
+                PADDZoneToFuelCost.Add("III", Double.Parse(priceRow[6].ToString()));
+                PADDZoneToFuelCost.Add("IV", Double.Parse(priceRow[7].ToString()));
+                PADDZoneToFuelCost.Add("V", Double.Parse(priceRow[8].ToString()));
+            } catch (Exception e) {
+                throw new Exception("Error while getting latest fuel price data.", e);
+            }
         }
 
         private void GetStatesPerPADDZone() {
-            Uri uri = new Uri(Properties.Settings.Default.PADDZonesResourceUri);
-            System.IO.Stream stIn = System.Windows.Application.GetResourceStream(uri).Stream;
-            XDocument doc = XDocument.Load(stIn);
-            //string sPaddZonesUrl = Properties.Settings.Default.PADDZonesUrl;
-            //XDocument doc = XDocument.Load(sPaddZonesUrl);
-            foreach (XElement elt in doc.Root.Elements(XName.Get("state"))) {
-                PaddStateToZone.Add((string)elt.Attribute("name"), (string)elt.Attribute("padd"));
+            try {
+                Uri uri = new Uri(Properties.Settings.Default.PADDZonesResourceUri);
+                System.IO.Stream stIn = System.Windows.Application.GetResourceStream(uri).Stream;
+                XDocument doc = XDocument.Load(stIn);
+                //string sPaddZonesUrl = Properties.Settings.Default.PADDZonesUrl;
+                //XDocument doc = XDocument.Load(sPaddZonesUrl);
+                foreach (XElement elt in doc.Root.Elements(XName.Get("state"))) {
+                    PaddStateToZone.Add((string)elt.Attribute("name"), (string)elt.Attribute("padd"));
+                }
+            } catch (Exception e) {
+                throw new Exception("Error getting states per PADD zone.", e);
             }
-
         }
         private void GetVehicleData() {
             // Read vehicles data
-            Uri uri = new Uri(Properties.Settings.Default.VehicleInfoResourceUri);
-            System.IO.Stream stIn = System.Windows.Application.GetResourceStream(uri).Stream;
-            _xmlAllVehicles = XDocument.Load(stIn);
+            try {
+                Uri uri = new Uri(Properties.Settings.Default.VehicleInfoResourceUri);
+                System.IO.Stream stIn = System.Windows.Application.GetResourceStream(uri).Stream;
+                _xmlAllVehicles = XDocument.Load(stIn);
+            } catch (Exception e) {
+                throw new Exception("Error getting and reading vehicle data.", e);
+            }
         }
         private void GetVehicleYears() {
             var qryYears = from vehicle in _xmlAllVehicles.Root.Elements("vehicle")
@@ -241,6 +263,9 @@ namespace Esri.APL.MilesPerDollar {
             _startSAAnalysisCommand = new RelayCommand(() => StartSAAnalysis(), () => CanStartSAAnalysis());
 
             _results = new ObservableCollection<Result>();
+
+            _readOnlyResults = new ReadOnlyObservableCollection<Result>(_results);
+            BindingOperations.EnableCollectionSynchronization(_readOnlyResults, _results);
             //DriveDistPolys.CollectionChanged += OnDriveDistPolysChanged;
             //_driveDistCircularBounds = new ObservableCollection<IDisposable>();
             //DriveDistCircularBounds.CollectionChanged += OnDriveDistCircularBoundsChanged;
@@ -260,29 +285,20 @@ namespace Esri.APL.MilesPerDollar {
             } catch (Exception e) {
                 System.Diagnostics.Debug.WriteLine("Error clearing result polygons: " + e.Message);
             }
-            //try {
-            //    foreach (IDisposable graphic in Results)
-            //        graphic.Dispose();
-            //} catch (Exception e) {
-            //    System.Diagnostics.Debug.WriteLine("Error clearing drive distance polygons: " + e.Message);
-            //}
-            //try {
-            //    foreach (IDisposable graphic in DriveDistCircularBounds) 
-            //        graphic.Dispose();
-            //} catch (Exception e) {
-            //    System.Diagnostics.Debug.WriteLine("Error clearing drive distance bounds: " + e.Message);
-            //}
-
             return base.UninitializeAsync();
         }
 
         protected override Task InitializeAsync() {
             // Populate data lists
-            GetVehicleData();
-            GetFuelPricePerPADDZone();
-            GetStatesPerPADDZone();
-            // Prepopulate years dropdown
-            GetVehicleYears();
+            try {
+                GetVehicleData();
+                GetFuelPricePerPADDZone();
+                GetStatesPerPADDZone();
+                // Prepopulate years dropdown
+                GetVehicleYears();
+            } catch (Exception e) {
+                MessageBox.Show("Error during initialization: " + e.Message);
+            }
             return base.InitializeAsync();
         }
         #endregion
@@ -314,11 +330,6 @@ namespace Esri.APL.MilesPerDollar {
         private ICommand _startSAAnalysisCommand;
         public ICommand StartSAAnalysisCommand => _startSAAnalysisCommand;
 
-        private ObservableCollection<Result> _results;
-        public ObservableCollection<Result> Results {
-            get { return _results;  }
-            set { SetProperty(ref _results, value); }
-        }
         //private ObservableCollection<IDisposable> _driveDistCircularBounds;
         //public ObservableCollection<IDisposable> DriveDistCircularBounds {
         //    get { return _driveDistCircularBounds; }
@@ -371,19 +382,24 @@ namespace Esri.APL.MilesPerDollar {
             // Find out what state the user clicked; or report an error if outside the U.S.
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(sReq);
             string sResp;
-            using (StreamReader sread = new StreamReader(req.GetResponse().GetResponseStream()))
-                sResp = sread.ReadToEnd();            
+            try {
+                using (StreamReader sread = new StreamReader(req.GetResponse().GetResponseStream()))
+                    sResp = sread.ReadToEnd();
+            } catch (Exception e) {
+                MessageBox.Show("Error mapping the chosen spot to a petroleum area district in the U.S.A.: " + e.Message);
+                return;
+            }
             dynamic respPADDState = JsonConvert.DeserializeObject(sResp);
 
-            if (respPADDState.features.Count < 1) {
+            try {
+                string sState = respPADDState.features[0].attributes.STATE.ToString();
+                // Find out what PADD zone the state is in
+                SelectedPADDZone = PaddStateToZone[sState];
+            } catch (Exception e) {
+                System.Diagnostics.Debug.WriteLine("Exception getting PADD for chosen spot: " + e.Message);
                 MessageBox.Show("Please choose a spot within the U.S.A.");
                 return /*null*/;
             }
-
-            string sState = respPADDState.features[0].attributes.STATE.ToString();
-
-            // Find out what PADD zone the state is in
-            SelectedPADDZone = PaddStateToZone[sState];
 
             // Find out the gallons/$1.00 in that PADD zone
             double nFuelCost = PADDZoneToFuelCost[SelectedPADDZone];
@@ -447,7 +463,8 @@ namespace Esri.APL.MilesPerDollar {
                 result.DriveServiceAreaGraphic?.Dispose();
                 result.DriveCircularBoundGraphic?.Dispose();
             }
-            Results.Clear();
+
+            lock (_lockResults) Results.Clear();
 
             //TODO Verify assumption that results are in same order as distances supplied in the GP svc dist parameter
             for (int iRes = aryResFeats.Count() - 1; iRes >= 0; iRes--) {
@@ -468,9 +485,9 @@ namespace Esri.APL.MilesPerDollar {
                 Result result = new Result(orderedVehicles[iRes]);
                 result.DriveServiceArea = poly;
                 result.DriveServiceAreaGraphic = graphic;
-                Results.Add(result);
+                result.DriveDistM = aryResFeats[iRes]["attributes"]["ToBreak"].Value<double>();
+                lock (_lockResults) Results.Add(result);
             }
-            //return resp;
         }
         #endregion
 
@@ -526,9 +543,10 @@ namespace Esri.APL.MilesPerDollar {
     #region Value Converters
 
     [ValueConversion(typeof(int), typeof(Visibility))]
-    public class CollectionCountToIsVisibileConverter : IValueConverter {
+    public class CollectionCountToIsVisibleConverter : IValueConverter {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
-            return (int)value > 0 ? Visibility.Visible : Visibility.Hidden;
+            System.Diagnostics.Debug.WriteLine("CollectionCountToIsVisibleConverter");
+                return (int)value > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
             throw new NotImplementedException();
@@ -570,6 +588,32 @@ namespace Esri.APL.MilesPerDollar {
             throw new NotImplementedException();
         }
     }
+
+    [ValueConversion(typeof(string), typeof(string))]
+    public class PADDZoneToFuelPriceString : IValueConverter {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+            string ret = "<unavailable>";
+            Dictionary<string, double> pz2fc = VehiclesPaneViewModel.instance.PADDZoneToFuelCost;
+            double dVal;
+            if (value != null && pz2fc != null && pz2fc.TryGetValue(value as string, out dVal))
+                ret = dVal.ToString();
+            return ret; 
+        }
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+            throw new NotImplementedException();
+        }
+    }
+
+    [ValueConversion(typeof(string), typeof(Color))]
+    public class VehicleColorConverter : IValueConverter {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+            return (Color)ColorConverter.ConvertFromString(value as string);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+            return ((Color)value).ToString();
+        }
+    }
     #endregion
 
     #region Helper Classes
@@ -594,12 +638,17 @@ namespace Esri.APL.MilesPerDollar {
         }
 
         public override string ToString() {
-            return String.Format("{0} {1} {2} {3}", _year, _make, _model, _type);
+            return LongDescription;
+        }
+        public string ShortDescription {
+            get {
+                return String.Format("{0} {1} {2}", Year, Make, Model);
+            }
         }
 
-        public string ListDisplayText {
+        public string LongDescription {
             get {
-                return ToString();
+                return String.Format("{0} {1} {2} {3}", Year, Make, Model, Type);
             }
         }
         public string Make {
@@ -669,6 +718,7 @@ namespace Esri.APL.MilesPerDollar {
         private Vehicle _vehicle;
         private Polygon _driveServiceArea;
         private Polygon _driveCircularBound;
+        private double _driveDistM;
         private IDisposable _driveServiceAreaGraphic, _driveCircularBoundGraphic;
 
         public Result(Vehicle vehicle) {
@@ -720,6 +770,21 @@ namespace Esri.APL.MilesPerDollar {
             set {
                 _driveCircularBoundGraphic = value;
             }
+        }
+
+        public double DriveDistM {
+            get {
+                return _driveDistM;
+            }
+
+            set {
+                SetProperty(ref _driveDistM, value);
+            }
+        }
+        public double DriveDistMi => Math.Round(DriveDistM / VehiclesPaneViewModel.METERS_PER_MILE, 1);
+        
+        public override string ToString() {
+            return Vehicle.ShortDescription;
         }
     }
 

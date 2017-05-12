@@ -4,15 +4,18 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"   
              xmlns:ui="clr-namespace:Esri.APL.MilesPerDollar"
+             xmlns:wpfToolkit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit"
              xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
              mc:Ignorable="d" 
-             d:DesignHeight="300" d:DesignWidth="300"
+             d:DesignWidth="300"
              d:DataContext="{Binding Path=ui.VehiclesPaneViewModel}">
     <UserControl.Resources>
-        <ui:CollectionCountToIsVisibileConverter x:Key="collectionCountToVisibility"/>
+        <ui:CollectionCountToIsVisibleConverter x:Key="collectionCountToVisibility"/>
         <ui:NullToIsVisibleConverter x:Key="nullToIsVisible"/>
         <ui:NullToIsEnabledConverter x:Key="nullToIsEnabled"/>
         <ui:VehicleXmlToDescriptionString x:Key="vehicleXmlToString"/>
+        <ui:PADDZoneToFuelPriceString x:Key="paddZoneToFuelPrice"/>
+        <ui:VehicleColorConverter x:Key="vehicleColorConverter"/>
         <ResourceDictionary x:Key="resDictMain">
             <ResourceDictionary.MergedDictionaries>
                 <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml"/>
@@ -84,7 +87,7 @@
             <Button x:Name="btnAddVehicle" Padding="8,3,8,3" HorizontalAlignment="Center" DockPanel.Dock="Top" 
                 Style="{StaticResource Esri_SimpleButton}" Command="{Binding AddSelectedVehicleCommand}">Add Vehicle</Button>
 
-            <ListBox x:Name="lstVehiclesSelected" BorderThickness="1,1,1,1" Margin="0,8,0,0" 
+            <ListBox x:Name="lstVehiclesSelected" BorderThickness="1,1,1,1" Margin="0,8,0,0"
                      DockPanel.Dock="Top" Height="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ItemsSource="{Binding SelectedVehicles}" Visibility="{Binding SelectedVehicles.Count, Converter={StaticResource collectionCountToVisibility}}">
                 <ListBox.ItemContainerStyle>
@@ -102,7 +105,7 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{Binding ListDisplayText}" ToolTip="{Binding ListDisplayText}"
+                            <TextBlock Grid.Column="0" Text="{Binding LongDescription}" ToolTip="{Binding LongDescription}"
                                        TextTrimming="CharacterEllipsis" Margin="0,0,2,0"
                                        HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="{StaticResource Esri_Gray120}"/>
                             <Button Grid.Column="1" Command="{Binding Path=DataContext.RemoveSelectedVehicleCommand, RelativeSource={RelativeSource Mode=FindAncestor,AncestorType={x:Type UserControl}}}" 
@@ -137,6 +140,44 @@
                         Start Analysis
                 </TextBlock>
             </Button>
+        </DockPanel>
+        <DockPanel Visibility="{Binding ReadOnlyResults.Count, Converter={StaticResource collectionCountToVisibility}}" 
+                  Grid.Row="3" MinHeight="100" Margin="0,8,0,0">
+            <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,3,0,8">
+                <Run>Selected PADD zone: </Run>
+                <Bold><Run Text="{Binding SelectedPADDZone}"/></Bold>
+                <LineBreak/>
+                <Run Text="{Binding Path=SelectedPADDZone, Converter={StaticResource paddZoneToFuelPrice}, StringFormat='Average ${0} per gallon'}"/>
+            </TextBlock>
+            <ListBox DockPanel.Dock="Top" ItemsSource="{Binding ReadOnlyResults}">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel Margin="0,0,0,3">
+                            <Separator DockPanel.Dock="Top" Margin="0,0,0,4">
+                                <Separator.Style>
+                                    <Style TargetType="Separator">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                    </Style>
+                                </Separator.Style>
+                            </Separator>
+                            <TextBlock Text="{Binding}" DockPanel.Dock="Top"/>
+                            <TextBlock Text="{Binding Path=Vehicle.Mpg, StringFormat=' {0} miles per gallon'}" DockPanel.Dock="Top"/>
+                            <TextBlock Text="{Binding Path=DriveDistMi, StringFormat=' {0} miles on one dollar'}" DockPanel.Dock="Top"/>
+                            <wpfToolkit:ColorPicker DockPanel.Dock="Top" HorizontalAlignment="Left" Width="150"
+                                                    SelectedColor="{Binding Vehicle.Color, Converter={StaticResource vehicleColorConverter}, Mode=TwoWay}"/>
+                        </DockPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
         </DockPanel>
     </Grid>
 </UserControl>
