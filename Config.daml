@@ -1,10 +1,10 @@
 ﻿<ArcGIS defaultAssembly="Esri.APL.MilesPerDollar.dll" defaultNamespace="Esri.APL.MilesPerDollar" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///E:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
   <AddInInfo id="{500ff634-dd1f-4962-8baa-77f8dc37040d}" version="1.0" desktopVersion="1.4.7198">
     <Name>mpd_pro_addin_cs</Name>
-    <Description>mpd_pro_addin_cs description</Description>
+    <Description>How Far Can I Drive on a Buck?</Description>
     <Image>Images\AddinDesktop32.png</Image>
     <Author>mark4238</Author>
-    <Company>Acme</Company>
+    <Company>Esri APL</Company>
     <Date>4/21/2017 2:52:34 PM, 2017</Date>
     <Subject>Framework</Subject>
     <!-- Note subject can be one or more of these topics:
@@ -42,7 +42,7 @@
         </tool>
       </controls>
       <dockPanes>
-        <dockPane id="Esri_APL_MilesPerDollar_VehiclesPane" caption="VehiclesPane" className="VehiclesPaneViewModel" dock="group" dockWith="esri_core_contentsDockPane">
+        <dockPane id="Esri_APL_MilesPerDollar_VehiclesPane" caption="Drive with George" className="VehiclesPaneViewModel" dock="group" dockWith="esri_core_contentsDockPane">
           <content className="VehiclesPaneView" />
         </dockPane>
       </dockPanes>

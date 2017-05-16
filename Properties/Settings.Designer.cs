@@ -101,5 +101,23 @@ namespace Esri.APL.MilesPerDollar.Properties {
                 return ((string)(this["PADDZonesResourceUri"]));
             }
         }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("MilesPerDollar.500ff634-dd1f-4962-8baa-77f8dc37040d")]
+        public string ResultFeatureClassName {
+            get {
+                return ((string)(this["ResultFeatureClassName"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("MilesPerDollar Results")]
+        public string ResultFeatureLayerName {
+            get {
+                return ((string)(this["ResultFeatureLayerName"]));
+            }
+        }
     }
 }

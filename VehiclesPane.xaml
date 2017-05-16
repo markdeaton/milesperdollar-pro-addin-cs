@@ -16,6 +16,7 @@
         <ui:VehicleXmlToDescriptionString x:Key="vehicleXmlToString"/>
         <ui:PADDZoneToFuelPriceString x:Key="paddZoneToFuelPrice"/>
         <ui:VehicleColorConverter x:Key="vehicleColorConverter"/>
+        <ui:VehicleSolidColorBrushConverter x:Key="vehicleSolidColorBrushConverter"/>
         <ResourceDictionary x:Key="resDictMain">
             <ResourceDictionary.MergedDictionaries>
                 <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml"/>
@@ -93,7 +94,7 @@
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                        <Setter Property="Focusable" Value="False"/>
                         <!--    <Setter Property="TextBlock.Foreground" Value="{Binding Color}"/>
                         <Setter Property="Background" Value="{DynamicResource Esri_Gray120}"/>-->
                     </Style>
@@ -105,14 +106,21 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{Binding LongDescription}" ToolTip="{Binding LongDescription}"
+                            <TextBlock Grid.Column="0" Text="{Binding LongDescription}"
                                        TextTrimming="CharacterEllipsis" Margin="0,0,2,0"
-                                       HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="{StaticResource Esri_Gray120}"/>
+                                       HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                <ToolTipService.ToolTip>
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Top" Text="{Binding LongDescription}"/>
+                                        <TextBlock DockPanel.Dock="Top" Text="{Binding Mpg, StringFormat='\{0} MPG'}" HorizontalAlignment="Center"/>
+                                    </DockPanel>
+                                </ToolTipService.ToolTip>
+                            </TextBlock>
                             <Button Grid.Column="1" Command="{Binding Path=DataContext.RemoveSelectedVehicleCommand, RelativeSource={RelativeSource Mode=FindAncestor,AncestorType={x:Type UserControl}}}" 
                                     CommandParameter="{Binding}"
                                     FocusVisualStyle="{x:Null}"
                                     HorizontalAlignment="Right" BorderThickness="0" 
-                                    Background="{x:Null}" Foreground="{StaticResource Esri_Black}"
+                                    Background="{x:Null}" Foreground="{DynamicResource Esri_Black}"
                                     ToolTip="Remove this vehicle" Margin="0">
                                 [X]
                                 <!--<Image Source="Images/vehicle-delete.png" Grid.Column="1" Height="16" Width="16"/>-->
@@ -147,17 +155,18 @@
                 <Run>Selected PADD zone: </Run>
                 <Bold><Run Text="{Binding SelectedPADDZone}"/></Bold>
                 <LineBreak/>
-                <Run Text="{Binding Path=SelectedPADDZone, Converter={StaticResource paddZoneToFuelPrice}, StringFormat='Average ${0} per gallon'}"/>
+                <Run Text="{Binding Path=SelectedPADDZone, Converter={StaticResource paddZoneToFuelPrice}, StringFormat='${0} per gallon average'}"/>
             </TextBlock>
-            <ListBox DockPanel.Dock="Top" ItemsSource="{Binding ReadOnlyResults}">
+            <ListBox DockPanel.Dock="Top" ItemsSource="{Binding ReadOnlyResults}" FocusVisualStyle="{x:Null}">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="Focusable" Value="False"/>
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <DockPanel Margin="0,0,0,3">
+                        <!--<DockPanel Margin="0,0,0,3">
                             <Separator DockPanel.Dock="Top" Margin="0,0,0,4">
                                 <Separator.Style>
                                     <Style TargetType="Separator">
@@ -170,11 +179,63 @@
                                 </Separator.Style>
                             </Separator>
                             <TextBlock Text="{Binding}" DockPanel.Dock="Top"/>
-                            <TextBlock Text="{Binding Path=Vehicle.Mpg, StringFormat=' {0} miles per gallon'}" DockPanel.Dock="Top"/>
-                            <TextBlock Text="{Binding Path=DriveDistMi, StringFormat=' {0} miles on one dollar'}" DockPanel.Dock="Top"/>
+                            <TextBlock Text="{Binding Path=Vehicle.Mpg, StringFormat='\{0} miles per gallon'}" DockPanel.Dock="Top"/>
+                            <TextBlock Text="{Binding Path=DriveDistMi, StringFormat='\{0} miles on one dollar'}" DockPanel.Dock="Top"/>
+                            <Rectangle DockPanel.Dock="Top" HorizontalAlignment="Left" Height="20" Width="50" 
+                                       Fill="{Binding Vehicle.Color, Converter={StaticResource vehicleSolidColorBrushConverter}}"
+                                       Stroke="{DynamicResource Esri_Black}"/>
                             <wpfToolkit:ColorPicker DockPanel.Dock="Top" HorizontalAlignment="Left" Width="150"
                                                     SelectedColor="{Binding Vehicle.Color, Converter={StaticResource vehicleColorConverter}, Mode=TwoWay}"/>
-                        </DockPanel>
+                        </DockPanel>-->
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Separator Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,4">
+                                <Separator.Style>
+                                    <Style TargetType="Separator">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Separator.Style>
+                            </Separator>
+                            <Rectangle Grid.RowSpan="3" Grid.Row="1" Grid.Column="0" Width="8" HorizontalAlignment="Stretch"
+                                       Fill="{Binding Color, Converter={StaticResource vehicleSolidColorBrushConverter}}"
+                                       Stroke="{DynamicResource Esri_Black}" Margin="0,0,5,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding}" DockPanel.Dock="Top"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Path=Vehicle.Mpg, StringFormat='\{0} miles per gallon'}" DockPanel.Dock="Top"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Path=DriveDistMi, StringFormat='\{0} miles on one dollar'}" DockPanel.Dock="Top"/>
+                        </Grid>
+                        <!--<DockPanel Margin="0,0,0,3">
+                            <Separator DockPanel.Dock="Top" Margin="0,0,0,4">
+                                <Separator.Style>
+                                    <Style TargetType="Separator">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                    </Style>
+                                </Separator.Style>
+                            </Separator>
+                            <TextBlock Text="{Binding}" DockPanel.Dock="Top"/>
+                            <TextBlock Text="{Binding Path=Vehicle.Mpg, StringFormat='\{0} miles per gallon'}" DockPanel.Dock="Top"/>
+                            <TextBlock Text="{Binding Path=DriveDistMi, StringFormat='\{0} miles on one dollar'}" DockPanel.Dock="Top"/>
+                            <Rectangle DockPanel.Dock="Left" HorizontalAlignment="Left" VerticalAlignment="Stretch" Width="8" 
+                                       Fill="{Binding Vehicle.Color, Converter={StaticResource vehicleSolidColorBrushConverter}}"
+                                       Stroke="{DynamicResource Esri_Black}"/>
+                        </DockPanel>-->
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>

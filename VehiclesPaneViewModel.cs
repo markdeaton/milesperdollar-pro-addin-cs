@@ -29,9 +29,9 @@ namespace Esri.APL.MilesPerDollar {
         // CONSTS
         private const string STATE_ALLOW_FIND_SA = "mpd_allow_find_servicearea_state";
         public static readonly double METERS_PER_MILE = 1609.34;
-        private const float RESULT_OPACITY_PCT = 70;
+        private const byte RESULT_OPACITY_PCT = 70;
         // Colors need to be in order of descending MPG/polygon size
-        private readonly List<Color> _vehicleColors = new List<Color>() { Colors.LightGreen, Colors.Crimson };
+        private readonly List<Color> _vehicleColors = new List<Color>() { Colors.Crimson, Colors.LightGreen };
 
         // Thread locking objects
         //protected object _lockXmlYears = new object();
@@ -162,13 +162,13 @@ namespace Esri.APL.MilesPerDollar {
         }
         private void OnSelectedVehiclesChanged(object sender, NotifyCollectionChangedEventArgs e) {
             System.Diagnostics.Debug.WriteLine("OnSelectedVehiclesChanged");
-            ObservableCollection<Vehicle> vehs = (ObservableCollection<Vehicle>)sender;
-            if (vehs.Count <= 0) return;
+            //ObservableCollection<Vehicle> vehs = (ObservableCollection<Vehicle>)sender;
+            //if (vehs.Count <= 0) return;
 
-            List<Vehicle> ovehs = vehs.OrderByDescending(vehicle => vehicle.Mpg).ToList();
-            for (int iVeh = 0; iVeh < ovehs.Count(); iVeh++) {
-                ovehs[iVeh].Color = _vehicleColors[iVeh].ToString();
-            }
+            //List<Vehicle> ovehs = vehs.OrderBy(vehicle => vehicle.Mpg).ToList();
+            //for (int iVeh = 0; iVeh < ovehs.Count(); iVeh++) {
+            //    ovehs[iVeh].Color = _vehicleColors[iVeh].ToString();
+            //}
         }
 
 
@@ -467,7 +467,17 @@ namespace Esri.APL.MilesPerDollar {
             lock (_lockResults) Results.Clear();
 
             //TODO Verify assumption that results are in same order as distances supplied in the GP svc dist parameter
+            // Iterate backwards to add larger polygons behind smaller ones
             for (int iRes = aryResFeats.Count() - 1; iRes >= 0; iRes--) {
+                Result result = new Result(orderedVehicles[iRes]);
+
+                // Compute  color for this result
+                float multiplier = aryResFeats.Count > 1 ? iRes / (aryResFeats.Count - 1) : 0;
+                byte red = (byte) (255 - (255 * multiplier));
+                byte green = (byte) (255 * multiplier);
+                Color color = Color.FromRgb(red, green, 0);
+                result.Color = color.ToString();
+
                 string sGeom = aryResFeats[iRes]["geometry"].ToString();
                 Polygon poly = await QueuedTask.Run(() => {
                     Polygon polyNoSR = PolygonBuilder.FromJson(sGeom);
@@ -475,14 +485,13 @@ namespace Esri.APL.MilesPerDollar {
                 });
                 CIMStroke outline = SymbolFactory.ConstructStroke(ColorFactory.BlackRGB, 1.0, SimpleLineStyle.Solid);
                 CIMPolygonSymbol symPoly = SymbolFactory.ConstructPolygonSymbol(
-                    ColorFactory.CreateRGBColor(_vehicleColors[iRes].R, _vehicleColors[iRes].G, _vehicleColors[iRes].B, RESULT_OPACITY_PCT), 
+                    ColorFactory.CreateRGBColor(_vehicleColors[iRes].R, _vehicleColors[iRes].G, _vehicleColors[iRes].B, RESULT_OPACITY_PCT),
                     SimpleFillStyle.Solid, outline);
                 CIMSymbolReference sym = symPoly.MakeSymbolReference();
                 CIMSymbolReference symDef = SymbolFactory.DefaultPolygonSymbol.MakeSymbolReference();
                 IDisposable graphic = await QueuedTask.Run(() => {
                     return mapView.AddOverlay(poly, sym);
                 });
-                Result result = new Result(orderedVehicles[iRes]);
                 result.DriveServiceArea = poly;
                 result.DriveServiceAreaGraphic = graphic;
                 result.DriveDistM = aryResFeats[iRes]["attributes"]["ToBreak"].Value<double>();
@@ -614,6 +623,15 @@ namespace Esri.APL.MilesPerDollar {
             return ((Color)value).ToString();
         }
     }
+    public class VehicleSolidColorBrushConverter : IValueConverter {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+            return new SolidColorBrush((Color)ColorConverter.ConvertFromString(value as string));
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+            return ((SolidColorBrush)value).Color.ToString();
+        }
+    }
     #endregion
 
     #region Helper Classes
@@ -621,7 +639,6 @@ namespace Esri.APL.MilesPerDollar {
     public class Vehicle : PropertyChangedBase {
         private string _year, _make, _model, _type;
         private int _mpg;
-        private string _color;
         public Vehicle(string year, string make, string model, string engine, int mpg) {
             _year = year;
             _make = make;
@@ -694,15 +711,6 @@ namespace Esri.APL.MilesPerDollar {
         /// <summary>
         /// The color used to display the drive-distance polygon and list item for this vehicle.
         /// </summary>
-        public string Color {
-            get {
-                return _color;
-            }
-
-            set {
-                SetProperty(ref _color, value);
-            }
-        }
 
         public int Mpg {
             get {
@@ -719,6 +727,7 @@ namespace Esri.APL.MilesPerDollar {
         private Polygon _driveServiceArea;
         private Polygon _driveCircularBound;
         private double _driveDistM;
+        private string _color;
         private IDisposable _driveServiceAreaGraphic, _driveCircularBoundGraphic;
 
         public Result(Vehicle vehicle) {
@@ -781,6 +790,16 @@ namespace Esri.APL.MilesPerDollar {
                 SetProperty(ref _driveDistM, value);
             }
         }
+        public string Color {
+            get {
+                return _color;
+            }
+
+            set {
+                SetProperty(ref _color, value);
+            }
+        }
+
         public double DriveDistMi => Math.Round(DriveDistM / VehiclesPaneViewModel.METERS_PER_MILE, 1);
         
         public override string ToString() {
