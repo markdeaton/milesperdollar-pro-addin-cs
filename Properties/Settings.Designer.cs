@@ -104,7 +104,7 @@ namespace Esri.APL.MilesPerDollar.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("MilesPerDollar.500ff634-dd1f-4962-8baa-77f8dc37040d")]
+        [global::System.Configuration.DefaultSettingValueAttribute("MilesPerDollar_500ff634dd1f49628baa77f8dc37040d")]
         public string ResultFeatureClassName {
             get {
                 return ((string)(this["ResultFeatureClassName"]));
@@ -117,6 +117,15 @@ namespace Esri.APL.MilesPerDollar.Properties {
         public string ResultFeatureLayerName {
             get {
                 return ((string)(this["ResultFeatureLayerName"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("102100")]
+        public int ResultFeatureClassSRWkid {
+            get {
+                return ((int)(this["ResultFeatureClassSRWkid"]));
             }
         }
     }

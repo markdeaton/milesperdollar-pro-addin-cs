@@ -27,10 +27,13 @@
       <Value Profile="(Default)">pack://application:,,,/Esri.APL.MilesPerDollar;component/Resources/States2PADD.xml</Value>
     </Setting>
     <Setting Name="ResultFeatureClassName" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">MilesPerDollar.500ff634-dd1f-4962-8baa-77f8dc37040d</Value>
+      <Value Profile="(Default)">MilesPerDollar_500ff634dd1f49628baa77f8dc37040d</Value>
     </Setting>
     <Setting Name="ResultFeatureLayerName" Type="System.String" Scope="Application">
       <Value Profile="(Default)">MilesPerDollar Results</Value>
+    </Setting>
+    <Setting Name="ResultFeatureClassSRWkid" Type="System.Int32" Scope="Application">
+      <Value Profile="(Default)">102100</Value>
     </Setting>
   </Settings>
 </SettingsFile>

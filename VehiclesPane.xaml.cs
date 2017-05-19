@@ -22,5 +22,9 @@ namespace Esri.APL.MilesPerDollar {
         public VehiclesPaneView() {
             InitializeComponent();
         }
+
+        private void Image_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) {
+            System.Diagnostics.Process.Start("http://www.fueleconomy.gov/feg/info.shtml");
+        }
     }
 }

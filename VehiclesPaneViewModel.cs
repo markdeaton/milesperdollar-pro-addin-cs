@@ -23,18 +23,16 @@ using ArcGIS.Desktop.Mapping;
 using ArcGIS.Core.CIM;
 using Newtonsoft.Json.Linq;
 using System.Windows.Media;
+using ArcGIS.Desktop.Core;
+using ArcGIS.Core.Data;
+using ArcGIS.Desktop.Core.Geoprocessing;
 
 namespace Esri.APL.MilesPerDollar {
     internal class VehiclesPaneViewModel : DockPane {
         // CONSTS
         private const string STATE_ALLOW_FIND_SA = "mpd_allow_find_servicearea_state";
-        public static readonly double METERS_PER_MILE = 1609.34;
-        private const byte RESULT_OPACITY_PCT = 70;
-        // Colors need to be in order of descending MPG/polygon size
-        private readonly List<Color> _vehicleColors = new List<Color>() { Colors.Crimson, Colors.LightGreen };
-
-        // Thread locking objects
-        //protected object _lockXmlYears = new object();
+        private const byte RESULT_OPACITY_PCT = 20;
+        private const int MAX_VEHICLES = 5;
 
         #region Model variables and properties
 
@@ -42,8 +40,9 @@ namespace Esri.APL.MilesPerDollar {
         private ObservableCollection<Vehicle> _selectedVehicles;
 
         private ObservableCollection<string> _vehicleYears, _vehicleMakes, _vehicleModels, _vehicleTypes;
-        // Since we're updating the dropdowns on the UI thread, no need to use the convoluted
-        // read-only sync pattern shown in some of the samples.
+        
+        // Since we're updating the dropdowns on the UI thread, no need to use the 
+        // synchronization pattern the way we do with the Results collection.
         //private readonly ReadOnlyObservableCollection<string> _readonlyVehicleYears;
 
         private string _selectedVehicleYear, _selectedVehicleMake, _selectedVehicleModel, _selectedVehicleType;
@@ -142,15 +141,12 @@ namespace Esri.APL.MilesPerDollar {
             }
         }
 
-        private ObservableCollection<Result> _results = new ObservableCollection<Result>();
         private object _lockResults = new object(); // locking object
+        private ObservableCollection<Result> _results = new ObservableCollection<Result>();
         public ObservableCollection<Result> Results {
             get { return _results; }
             set { SetProperty(ref _results, value); }
         }
-
-        private ReadOnlyObservableCollection<Result> _readOnlyResults;
-        public ReadOnlyObservableCollection<Result> ReadOnlyResults => _readOnlyResults;
 
         public string SelectedPADDZone {
             get {
@@ -166,7 +162,7 @@ namespace Esri.APL.MilesPerDollar {
             //if (vehs.Count <= 0) return;
 
             //List<Vehicle> ovehs = vehs.OrderBy(vehicle => vehicle.Mpg).ToList();
-            //for (int iVeh = 0; iVeh < ovehs.Count(); iVeh++) {
+            //for (int iVeh = 0; iVeh < ovehs.Count; iVeh++) {
             //    ovehs[iVeh].Color = _vehicleColors[iVeh].ToString();
             //}
         }
@@ -200,8 +196,6 @@ namespace Esri.APL.MilesPerDollar {
                 Uri uri = new Uri(Properties.Settings.Default.PADDZonesResourceUri);
                 System.IO.Stream stIn = System.Windows.Application.GetResourceStream(uri).Stream;
                 XDocument doc = XDocument.Load(stIn);
-                //string sPaddZonesUrl = Properties.Settings.Default.PADDZonesUrl;
-                //XDocument doc = XDocument.Load(sPaddZonesUrl);
                 foreach (XElement elt in doc.Root.Elements(XName.Get("state"))) {
                     PaddStateToZone.Add((string)elt.Attribute("name"), (string)elt.Attribute("padd"));
                 }
@@ -261,14 +255,10 @@ namespace Esri.APL.MilesPerDollar {
             _addSelectedVehicleCommand = new RelayCommand(() => AddSelectedVehicle(), () => CanAddSelectedVehicle());
             _removeSelectedVehicleCommand = new RelayCommand((selected) => RemoveSelectedVehicle(selected), () => true);
             _startSAAnalysisCommand = new RelayCommand(() => StartSAAnalysis(), () => CanStartSAAnalysis());
+            _saveResultsCommand = new RelayCommand(() => SaveResults(), () => CanSaveResults());
 
             _results = new ObservableCollection<Result>();
-
-            _readOnlyResults = new ReadOnlyObservableCollection<Result>(_results);
-            BindingOperations.EnableCollectionSynchronization(_readOnlyResults, _results);
-            //DriveDistPolys.CollectionChanged += OnDriveDistPolysChanged;
-            //_driveDistCircularBounds = new ObservableCollection<IDisposable>();
-            //DriveDistCircularBounds.CollectionChanged += OnDriveDistCircularBoundsChanged;
+            BindingOperations.EnableCollectionSynchronization(_results, _lockResults);
         }
         protected override Task UninitializeAsync() {
             try {
@@ -297,7 +287,7 @@ namespace Esri.APL.MilesPerDollar {
                 // Prepopulate years dropdown
                 GetVehicleYears();
             } catch (Exception e) {
-                MessageBox.Show("Error during initialization: " + e.Message);
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error during initialization: " + e.Message);
             }
             return base.InitializeAsync();
         }
@@ -312,8 +302,8 @@ namespace Esri.APL.MilesPerDollar {
 
         public bool CanAddSelectedVehicle() {
             bool vehicleSelected = SelectedVehicle != null;
-            bool tooManyVehiclesAlreadyChosen = SelectedVehicles.Count >= 2;
-            return vehicleSelected && !tooManyVehiclesAlreadyChosen;
+            bool maxVehiclesAlreadyChosen = SelectedVehicles.Count >= MAX_VEHICLES;
+            return vehicleSelected && !maxVehiclesAlreadyChosen;
         }
         private void AddSelectedVehicle() {
             System.Diagnostics.Debug.WriteLine("AddSelectedVehicle");
@@ -322,6 +312,147 @@ namespace Esri.APL.MilesPerDollar {
         private void RemoveSelectedVehicle(object selected) {
             System.Diagnostics.Debug.WriteLine("RemoveSelectedVehicle: " + (selected as Vehicle)?.ToString());
             if (selected is Vehicle) SelectedVehicles.Remove((Vehicle)selected);
+        }
+        #endregion
+
+        #region Save Results command
+        public ICommand SaveResultsCommand => _saveResultsCommand;
+        private ICommand _saveResultsCommand;
+
+        public bool CanSaveResults() {
+            return true;
+        }
+        public void SaveResults() {
+            // Check for a feature layer connected to a feature class with the right name, type, etc.
+            string resultFcName = Properties.Settings.Default.ResultFeatureClassName;
+            List<FeatureLayer> featureLayers = MapView.Active.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
+            FeatureLayer flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName);
+
+            if (flResults == null) {
+                // Look for a FC to connect it to
+                Task task = QueuedTask.Run(async () => {
+                    string defFgdbPath = Project.Current.DefaultGeodatabasePath;
+                    try {
+                        using (Geodatabase fgdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(defFgdbPath)))) {
+                            IReadOnlyList<string> gpParams;
+                            FeatureClass fc = null;
+                            try {
+                                fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
+                            } catch (GeodatabaseException) {
+                                // Create results feature class
+                                gpParams = Geoprocessing.MakeValueArray(
+                                    defFgdbPath, resultFcName, "POLYGON", null, null, null,
+                                    SpatialReferenceBuilder.CreateSpatialReference(Properties.Settings.Default.ResultFeatureClassSRWkid));
+                                IGPResult resCreateFC = await Geoprocessing.ExecuteToolAsync("management.CreateFeatureclass", gpParams);
+                                if (resCreateFC.IsFailed) {
+                                    List<string> errMsgs = resCreateFC.ErrorMessages.Select(errMsg => errMsg.Text).ToList();
+                                    string sErrMsgs = String.Join("\n", errMsgs);
+                                    throw new Exception("Error creating results feature class:" + sErrMsgs);
+                                }
+                                fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
+                            }
+                            await AddResultFcFields(fc);
+
+                            // Create a feature layer and connect it to the FC found or created
+                            //LayerFactory.CreateFeatureLayer()
+                            // If found, connect it and use it; else, create one and connect it and use it
+                        }
+                    } catch (GeodatabaseException e) {
+                        System.Diagnostics.Debug.WriteLine("Error opening or creating GDB: " + e.Message);
+                    } catch (AggregateException e) {
+                        string sErrs = String.Join("\n", e.InnerExceptions.Select(eInner => eInner.Message).ToArray<string>());
+                        System.Diagnostics.Debug.WriteLine("Error creating GDB:" + sErrs);
+                        ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error creating/modifying results GDB:" + sErrs);
+                    }
+                });
+            }
+
+            // flResults now has the feature layer to add result features to
+        }
+
+        private async Task AddResultFcFields(FeatureClass fc) {
+            // Add Fields
+            IGPResult resCreateField;
+            IReadOnlyList<string> gpParams;
+            string fieldName;
+
+            // Vehicle year, make, model, type, MPG
+            fieldName = "VehicleYear";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 4);
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+
+            fieldName = "VehicleMake";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+
+            fieldName = "VehicleModel";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+
+            fieldName = "VehicleType";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+
+            fieldName = "VehicleMPG";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "SHORT");
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+
+            fieldName = "OriginalSymbolColor";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 7);
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+
+            // Result PADD zone, dollars per gallon, miles per dollar, drive distance (miles)
+            fieldName = "PADDZone";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 5);
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+
+            fieldName = "DOEGasPricePerGallon";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT");
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+
+            fieldName = "MilesPerDollar";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT", null, null, 100);
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+
+            fieldName = "DriveDistanceMiles";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT");
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+
+            // Comments
+            fieldName = "Comments";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 255);
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+        }
+
+        private void CheckAddFieldGpSuccess(IGPResult gpResult) {
+            string sField = gpResult.Parameters.ToArray()[1].Item3;
+            string sMsg;
+
+            if (gpResult.IsFailed) {
+                List<string> errMsgs = gpResult.ErrorMessages.Select(errMsg => errMsg.Text).ToList();
+                string sErrMsgs = String.Join("\n", errMsgs);
+                sMsg = "Error adding field " + sField + ": " + errMsgs;
+                System.Diagnostics.Debug.WriteLine(sMsg);
+                throw new Exception(sMsg);
+            } else if (gpResult.IsCanceled) {
+                sMsg = "Canceled addding field " + sField;
+                System.Diagnostics.Debug.WriteLine(sMsg);
+                throw new Exception(sMsg);
+            } else {
+                sMsg = "Successfully added field " + sField;
+                System.Diagnostics.Debug.WriteLine(sMsg);
+            }
         }
         #endregion
 
@@ -386,7 +517,7 @@ namespace Esri.APL.MilesPerDollar {
                 using (StreamReader sread = new StreamReader(req.GetResponse().GetResponseStream()))
                     sResp = sread.ReadToEnd();
             } catch (Exception e) {
-                MessageBox.Show("Error mapping the chosen spot to a petroleum area district in the U.S.A.: " + e.Message);
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error mapping the chosen spot to a petroleum area district in the U.S.A.: " + e.Message);
                 return;
             }
             dynamic respPADDState = JsonConvert.DeserializeObject(sResp);
@@ -397,7 +528,7 @@ namespace Esri.APL.MilesPerDollar {
                 SelectedPADDZone = PaddStateToZone[sState];
             } catch (Exception e) {
                 System.Diagnostics.Debug.WriteLine("Exception getting PADD for chosen spot: " + e.Message);
-                MessageBox.Show("Please choose a spot within the U.S.A.");
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Please choose a spot within the U.S.A.");
                 return /*null*/;
             }
 
@@ -408,7 +539,7 @@ namespace Esri.APL.MilesPerDollar {
             // Map is in meters, so convert miles to meters
             Vehicle[] orderedVehicles = SelectedVehicles.OrderBy(vehicle => vehicle.Mpg).ToArray<Vehicle>();
             IEnumerable<double> vehicleMetersPerDollar =
-                orderedVehicles.Select(vehicle => (vehicle.Mpg * METERS_PER_MILE) / nFuelCost);
+                orderedVehicles.Select(vehicle => (vehicle.MetersPerGallon) / nFuelCost);
 
             string sDistsParam = String.Join(" ", vehicleMetersPerDollar.ToArray());
             MapPoint ptStartLocNoZ = await QueuedTask.Run(() => {
@@ -431,11 +562,11 @@ namespace Esri.APL.MilesPerDollar {
             try {
                 wr = (HttpWebResponse)reqSA.GetResponse();
                 if (wr.StatusCode != HttpStatusCode.OK) {
-                    MessageBox.Show("Error running analysis: " + wr.StatusDescription);
+                    ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error running analysis: " + wr.StatusDescription);
                     return;
                 }
             } catch (WebException e) {
-                MessageBox.Show("Error running analysis: " + e.Message);
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error running analysis: " + e.Message);
                 return;
             }
 
@@ -446,8 +577,8 @@ namespace Esri.APL.MilesPerDollar {
 
             JArray feats = respAnalysis["results"][0]["value"]["features"] as JArray;
 
-            // Order so that largest polygon can be added to the map first
-            List<JToken> aryResFeats = feats.OrderBy(feat => feat["attributes"]["Shape_Area"].ToObject<Double>()).ToList();
+            // Rectify results and order so that largest polygon can be added to the map first
+            List<JToken> aryResFeats = RectifyResults(feats, orderedVehicles);
 
             int iSR = respAnalysis["results"][0]["value"]["spatialReference"]["wkid"].ToObject<Int32>();
             SpatialReference sr = await QueuedTask.Run<SpatialReference>(() => {
@@ -455,60 +586,92 @@ namespace Esri.APL.MilesPerDollar {
                 return srTemp;
             });
 
-            //TODO Support variable numbers of results
-            // Currently we assume 1 or 2 for simplicity assigning colors. More may require setting up a color ramp or scheme.
-            
             // Dispose all graphics before calling DriveDistPolys.Clear(); 
             foreach (Result result in Results) {
                 result.DriveServiceAreaGraphic?.Dispose();
                 result.DriveCircularBoundGraphic?.Dispose();
             }
 
-            lock (_lockResults) Results.Clear();
+            /*lock (_lockResults)*/ Results.Clear();
 
-            //TODO Verify assumption that results are in same order as distances supplied in the GP svc dist parameter
             // Iterate backwards to add larger polygons behind smaller ones
-            for (int iRes = aryResFeats.Count() - 1; iRes >= 0; iRes--) {
-                Result result = new Result(orderedVehicles[iRes]);
 
-                // Compute  color for this result
-                float multiplier = aryResFeats.Count > 1 ? iRes / (aryResFeats.Count - 1) : 0;
-                byte red = (byte) (255 - (255 * multiplier));
-                byte green = (byte) (255 * multiplier);
+            for (int iVeh = orderedVehicles.Count() - 1; iVeh >= 0; iVeh--) {
+                Result result = new Result(orderedVehicles[iVeh]);
+                Polygon poly = null;
+                IDisposable graphic = null;
+
+                // Compute color for this result
+                float multiplier = aryResFeats.Count > 1 ? ((float)iVeh) / ((float)(aryResFeats.Count - 1)) : 0;
+                byte red = (byte)(255 - (255 * multiplier));
+                byte green = (byte)(255 * multiplier);
                 Color color = Color.FromRgb(red, green, 0);
                 result.Color = color.ToString();
 
-                string sGeom = aryResFeats[iRes]["geometry"].ToString();
-                Polygon poly = await QueuedTask.Run(() => {
+                result.PaddZone = SelectedPADDZone;
+                result.DollarsPerGallon = nFuelCost;
+
+                string sGeom = aryResFeats[iVeh]["geometry"].ToString();
+                poly = await QueuedTask.Run(() => {
                     Polygon polyNoSR = PolygonBuilder.FromJson(sGeom);
                     return PolygonBuilder.CreatePolygon(polyNoSR, sr);
                 });
                 CIMStroke outline = SymbolFactory.ConstructStroke(ColorFactory.BlackRGB, 1.0, SimpleLineStyle.Solid);
                 CIMPolygonSymbol symPoly = SymbolFactory.ConstructPolygonSymbol(
-                    ColorFactory.CreateRGBColor(_vehicleColors[iRes].R, _vehicleColors[iRes].G, _vehicleColors[iRes].B, RESULT_OPACITY_PCT),
+                    ColorFactory.CreateRGBColor(color.R, color.G, color.B, RESULT_OPACITY_PCT),
                     SimpleFillStyle.Solid, outline);
                 CIMSymbolReference sym = symPoly.MakeSymbolReference();
                 CIMSymbolReference symDef = SymbolFactory.DefaultPolygonSymbol.MakeSymbolReference();
-                IDisposable graphic = await QueuedTask.Run(() => {
+                graphic = await QueuedTask.Run(() => {
                     return mapView.AddOverlay(poly, sym);
                 });
+
                 result.DriveServiceArea = poly;
                 result.DriveServiceAreaGraphic = graphic;
-                result.DriveDistM = aryResFeats[iRes]["attributes"]["ToBreak"].Value<double>();
-                lock (_lockResults) Results.Add(result);
+                result.DriveDistM = aryResFeats[iVeh]["attributes"]["ToBreak"].Value<double>();
+                /*lock (_lockResults)*/ Results.Add(result);
             }
+        }
+
+        /// <summary>
+        /// If multiple vehicles have the same MPG, we don't get multiple results for them;
+        //  results for those vehicles get collapsed. This will fill out the results, duplicating if needed.
+        /// </summary>
+        /// <param name="feats"></param>
+        /// <param name="orderedVehicles"></param>
+        /// <returns>List<JToken> or ordered and rectified results</returns>
+        private List<JToken> RectifyResults(JArray feats, Vehicle[] orderedVehicles) {
+            List<JToken> aryResFeats = feats.OrderBy(feat => feat["attributes"]["Shape_Area"].ToObject<Double>()).ToList();
+            int howManyMoreVehiclesThanResults = orderedVehicles.Count() - aryResFeats.Count;
+            int resultsDuplicatedSoFar = 0;
+
+            for (int iVeh = orderedVehicles.Count() - 1; iVeh >= 0; iVeh--) {
+                bool duplicateThePreviousResultForThisVehicle =
+                    howManyMoreVehiclesThanResults > 0
+                    && iVeh < orderedVehicles.Count() - 1
+                    && orderedVehicles[iVeh].Mpg == orderedVehicles[iVeh + 1].Mpg;
+
+                if (duplicateThePreviousResultForThisVehicle) {
+                    int iCurrentResultPosition = iVeh - howManyMoreVehiclesThanResults + resultsDuplicatedSoFar + 1;
+                    JToken resultToDuplicate = aryResFeats[iCurrentResultPosition];
+                    JToken duplicatedResult = resultToDuplicate.DeepClone();
+                    aryResFeats.Insert(iCurrentResultPosition, duplicatedResult);
+                    resultsDuplicatedSoFar++;
+                }
+        }
+            return aryResFeats;
         }
         #endregion
 
         #region Dockpane Plumbing
 
-        private const string _dockPaneID = "Esri_APL_MilesPerDollar_VehiclesPane";
+        private const string DOCKPANE_ID = "Esri_APL_MilesPerDollar_VehiclesPane";
 
         /// <summary>
         /// Show the DockPane.
         /// </summary>
         internal static void Show() {
-            DockPane pane = FrameworkApplication.DockPaneManager.Find(_dockPaneID);
+            DockPane pane = FrameworkApplication.DockPaneManager.Find(DOCKPANE_ID);
             if (pane == null)
                 return;
 
@@ -521,7 +684,7 @@ namespace Esri.APL.MilesPerDollar {
         internal static VehiclesPaneViewModel instance {
             get {
                 if (_instance == null) {
-                    _instance = (VehiclesPaneViewModel)FrameworkApplication.DockPaneManager.Find(_dockPaneID);
+                    _instance = (VehiclesPaneViewModel)FrameworkApplication.DockPaneManager.Find(DOCKPANE_ID);
                 }
                 return _instance;
             }
@@ -549,263 +712,4 @@ namespace Esri.APL.MilesPerDollar {
         }
     }
 
-    #region Value Converters
-
-    [ValueConversion(typeof(int), typeof(Visibility))]
-    public class CollectionCountToIsVisibleConverter : IValueConverter {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
-            System.Diagnostics.Debug.WriteLine("CollectionCountToIsVisibleConverter");
-                return (int)value > 0 ? Visibility.Visible : Visibility.Collapsed;
-        }
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
-            throw new NotImplementedException();
-        }
-    }
-    [ValueConversion(typeof(object), typeof(Visibility))]
-    public class NullToIsVisibleConverter : IValueConverter {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
-            System.Diagnostics.Debug.WriteLine("NullToVisibilityConverter");
-            return value == null ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
-            throw new NotImplementedException();
-        }
-    }
-
-    [ValueConversion(typeof(object), typeof(Boolean))]
-    public class NullToIsEnabledConverter : IValueConverter {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
-            System.Diagnostics.Debug.WriteLine("NullToIsEnabledConverter");
-            return !(value == null);
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
-            throw new NotImplementedException();
-        }
-    }
-
-    [ValueConversion(typeof(XElement), typeof(string))]
-    public class VehicleXmlToDescriptionString : IValueConverter {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
-            XElement vehicle = value as XElement;
-            return vehicle == null ? "<Error>" :
-                String.Format("%s %s %s %s", vehicle.Attribute("year"), vehicle.Attribute("make"), vehicle.Attribute("model"), vehicle.Attribute("type"));
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
-            throw new NotImplementedException();
-        }
-    }
-
-    [ValueConversion(typeof(string), typeof(string))]
-    public class PADDZoneToFuelPriceString : IValueConverter {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
-            string ret = "<unavailable>";
-            Dictionary<string, double> pz2fc = VehiclesPaneViewModel.instance.PADDZoneToFuelCost;
-            double dVal;
-            if (value != null && pz2fc != null && pz2fc.TryGetValue(value as string, out dVal))
-                ret = dVal.ToString();
-            return ret; 
-        }
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
-            throw new NotImplementedException();
-        }
-    }
-
-    [ValueConversion(typeof(string), typeof(Color))]
-    public class VehicleColorConverter : IValueConverter {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
-            return (Color)ColorConverter.ConvertFromString(value as string);
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
-            return ((Color)value).ToString();
-        }
-    }
-    public class VehicleSolidColorBrushConverter : IValueConverter {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
-            return new SolidColorBrush((Color)ColorConverter.ConvertFromString(value as string));
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
-            return ((SolidColorBrush)value).Color.ToString();
-        }
-    }
-    #endregion
-
-    #region Helper Classes
-    //TODO blog about PropertyChangedBase for color binding
-    public class Vehicle : PropertyChangedBase {
-        private string _year, _make, _model, _type;
-        private int _mpg;
-        public Vehicle(string year, string make, string model, string engine, int mpg) {
-            _year = year;
-            _make = make;
-            _model = model;
-            _type = engine;
-            _mpg = mpg;
-        }
-        public Vehicle(XElement vehicle) {
-            _year = vehicle.Attribute("year").Value;
-            _make = vehicle.Attribute("make").Value;
-            _model = vehicle.Attribute("model").Value;
-            _type = vehicle.Attribute("engine").Value;
-            _mpg = Int32.Parse(vehicle.Attribute("mpg").Value);
-        }
-
-        public override string ToString() {
-            return LongDescription;
-        }
-        public string ShortDescription {
-            get {
-                return String.Format("{0} {1} {2}", Year, Make, Model);
-            }
-        }
-
-        public string LongDescription {
-            get {
-                return String.Format("{0} {1} {2} {3}", Year, Make, Model, Type);
-            }
-        }
-        public string Make {
-            get {
-                return _make;
-            }
-
-            set {
-                _make = value;
-            }
-        }
-
-        public string Model {
-            get {
-                return _model;
-            }
-
-            set {
-                _model = value;
-            }
-        }
-
-        public string Type {
-            get {
-                return _type;
-            }
-
-            set {
-                _type = value;
-            }
-        }
-
-        public string Year {
-            get {
-                return _year;
-            }
-
-            set {
-                _year = value;
-            }
-        }
-
-        /// <summary>
-        /// The color used to display the drive-distance polygon and list item for this vehicle.
-        /// </summary>
-
-        public int Mpg {
-            get {
-                return _mpg;
-            }
-
-            set {
-                _mpg = value;
-            }
-        }
-    }
-    public class Result : PropertyChangedBase {
-        private Vehicle _vehicle;
-        private Polygon _driveServiceArea;
-        private Polygon _driveCircularBound;
-        private double _driveDistM;
-        private string _color;
-        private IDisposable _driveServiceAreaGraphic, _driveCircularBoundGraphic;
-
-        public Result(Vehicle vehicle) {
-            this.Vehicle = vehicle;
-        }
-
-        public Vehicle Vehicle {
-            get {
-                return _vehicle;
-            }
-            set {
-                SetProperty(ref _vehicle, value);
-            }
-        }
-
-        public Polygon DriveServiceArea {
-            get {
-                return _driveServiceArea;
-            }
-            set {
-                SetProperty(ref _driveServiceArea, value);
-            }
-        }
-
-        public Polygon DriveCircularBound {
-            get {
-                return _driveCircularBound;
-            }
-            set {
-                SetProperty(ref _driveCircularBound, value);
-            }
-        }
-
-        public IDisposable DriveServiceAreaGraphic {
-            get {
-                return _driveServiceAreaGraphic;
-            }
-
-            set {
-                _driveServiceAreaGraphic = value;
-            }
-        }
-
-        public IDisposable DriveCircularBoundGraphic {
-            get {
-                return _driveCircularBoundGraphic;
-            }
-
-            set {
-                _driveCircularBoundGraphic = value;
-            }
-        }
-
-        public double DriveDistM {
-            get {
-                return _driveDistM;
-            }
-
-            set {
-                SetProperty(ref _driveDistM, value);
-            }
-        }
-        public string Color {
-            get {
-                return _color;
-            }
-
-            set {
-                SetProperty(ref _color, value);
-            }
-        }
-
-        public double DriveDistMi => Math.Round(DriveDistM / VehiclesPaneViewModel.METERS_PER_MILE, 1);
-        
-        public override string ToString() {
-            return Vehicle.ShortDescription;
-        }
-    }
-
-    #endregion
 }
