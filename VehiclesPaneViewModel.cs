@@ -26,6 +26,7 @@ using System.Windows.Media;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Core.Data;
 using ArcGIS.Desktop.Core.Geoprocessing;
+using ArcGIS.Desktop.Editing;
 
 namespace Esri.APL.MilesPerDollar {
     internal class VehiclesPaneViewModel : DockPane {
@@ -156,17 +157,24 @@ namespace Esri.APL.MilesPerDollar {
                 SetProperty(ref _selectedPADDZone, value);
             }
         }
-        private void OnSelectedVehiclesChanged(object sender, NotifyCollectionChangedEventArgs e) {
-            System.Diagnostics.Debug.WriteLine("OnSelectedVehiclesChanged");
-            //ObservableCollection<Vehicle> vehs = (ObservableCollection<Vehicle>)sender;
-            //if (vehs.Count <= 0) return;
+        //private void OnSelectedVehiclesChanged(object sender, NotifyCollectionChangedEventArgs e) {
+        //    System.Diagnostics.Debug.WriteLine("OnSelectedVehiclesChanged");
+        //    ObservableCollection<Vehicle> vehs = (ObservableCollection<Vehicle>)sender;
+        //    if (vehs.Count <= 0) return;
 
-            //List<Vehicle> ovehs = vehs.OrderBy(vehicle => vehicle.Mpg).ToList();
-            //for (int iVeh = 0; iVeh < ovehs.Count; iVeh++) {
-            //    ovehs[iVeh].Color = _vehicleColors[iVeh].ToString();
+        //    List<Vehicle> ovehs = vehs.OrderBy(vehicle => vehicle.Mpg).ToList();
+        //    for (int iVeh = 0; iVeh < ovehs.Count; iVeh++) {
+        //        ovehs[iVeh].Color = _vehicleColors[iVeh].ToString();
+        //    }
+        //}
+
+            // Wish we could do this, but the event gets called *after* the collection is cleared.
+            //private void OnResultsCleared(object sender, NotifyCollectionChangedEventArgs e) {
+            //if (e.Action == NotifyCollectionChangedAction.Reset)
+            //    foreach (Result result in Results) {
+            //        result.DriveServiceAreaGraphic.Dispose();
+            //    }
             //}
-        }
-
 
         private void GetFuelPricePerPADDZone() {
             try { 
@@ -250,7 +258,7 @@ namespace Esri.APL.MilesPerDollar {
         VehiclesPaneViewModel() {
             // Set up necessary defaults
             _selectedVehicles = new ObservableCollection<Vehicle>();
-            SelectedVehicles.CollectionChanged += OnSelectedVehiclesChanged;
+            //SelectedVehicles.CollectionChanged += OnSelectedVehiclesChanged;
 
             _addSelectedVehicleCommand = new RelayCommand(() => AddSelectedVehicle(), () => CanAddSelectedVehicle());
             _removeSelectedVehicleCommand = new RelayCommand((selected) => RemoveSelectedVehicle(selected), () => true);
@@ -320,26 +328,30 @@ namespace Esri.APL.MilesPerDollar {
         private ICommand _saveResultsCommand;
 
         public bool CanSaveResults() {
-            return true;
+            return Results.Count > 0;
         }
         public void SaveResults() {
+            ProgressorSource ps = new ProgressorSource("Saving your results...");
             // Check for a feature layer connected to a feature class with the right name, type, etc.
-            string resultFcName = Properties.Settings.Default.ResultFeatureClassName;
-            List<FeatureLayer> featureLayers = MapView.Active.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
-            FeatureLayer flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName);
+            Task task = QueuedTask.Run(async () => {
+                Geodatabase fgdb = null;
+                try {
+                    string resultFcName = Properties.Settings.Default.ResultFeatureClassName;
+                    List<FeatureLayer> featureLayers = MapView.Active.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
+                    FeatureLayer flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName);
+                    FeatureClass fc = null;
 
-            if (flResults == null) {
-                // Look for a FC to connect it to
-                Task task = QueuedTask.Run(async () => {
-                    string defFgdbPath = Project.Current.DefaultGeodatabasePath;
-                    try {
-                        using (Geodatabase fgdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(defFgdbPath)))) {
+                    if (flResults == null) {
+                        // Look for a FC to connect it to
+                        string defFgdbPath = Project.Current.DefaultGeodatabasePath;
+                        try {
+                            fgdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(defFgdbPath)));
                             IReadOnlyList<string> gpParams;
-                            FeatureClass fc = null;
                             try {
                                 fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
                             } catch (GeodatabaseException) {
                                 // Create results feature class
+                                ps.Status = "Creating feature class...";
                                 gpParams = Geoprocessing.MakeValueArray(
                                     defFgdbPath, resultFcName, "POLYGON", null, null, null,
                                     SpatialReferenceBuilder.CreateSpatialReference(Properties.Settings.Default.ResultFeatureClassSRWkid));
@@ -351,23 +363,77 @@ namespace Esri.APL.MilesPerDollar {
                                 }
                                 fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
                             }
-                            await AddResultFcFields(fc);
-
-                            // Create a feature layer and connect it to the FC found or created
-                            //LayerFactory.CreateFeatureLayer()
-                            // If found, connect it and use it; else, create one and connect it and use it
+                        } catch (Exception e) {
+                            throw new Exception("Error opening or creating feature class", e);
                         }
-                    } catch (GeodatabaseException e) {
-                        System.Diagnostics.Debug.WriteLine("Error opening or creating GDB: " + e.Message);
-                    } catch (AggregateException e) {
-                        string sErrs = String.Join("\n", e.InnerExceptions.Select(eInner => eInner.Message).ToArray<string>());
-                        System.Diagnostics.Debug.WriteLine("Error creating GDB:" + sErrs);
-                        ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error creating/modifying results GDB:" + sErrs);
+                    flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName) ??
+                                LayerFactory.CreateFeatureLayer(fc, MapView.Active.Map, 0);
+                       
+                    } else {
+                        fc = flResults.GetFeatureClass();
                     }
-                });
-            }
 
-            // flResults now has the feature layer to add result features to
+                    flResults?.SetVisibility(false);
+                    try {
+                        ps.Status = "Adding fields to feature class...";
+                        await AddResultFcFields(fc);
+                    } catch (Exception e) {
+                        throw new Exception("Error adding fields to result feature class", e);
+                    }
+
+                    // By default, the GDB is added to the map via a new feature layer
+                    try {
+                        ps.Status = "Creating result features...";
+                        await AddResultFeatures(fc);
+                    } catch (Exception e) {
+                        throw new Exception("Error creating result features", e);
+                    }
+
+                    // If we got here, it was sucessful; we can discard the graphic overlays
+                    foreach (Result result in Results) {
+                        result.DriveServiceAreaGraphic?.Dispose(); result.DriveCircularBoundGraphic?.Dispose();
+                    }
+                    Results.Clear();
+
+                    flResults?.SetVisibility(true);
+                } catch (Exception e) {
+                    System.Diagnostics.Debug.WriteLine(e.Message);
+                    string sMsg = e.Message + ":\n" + e.InnerException.Message;
+                    ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(sMsg);
+                } finally {
+                    fgdb?.Dispose();
+                }
+            }, ps.Progressor);
+        }
+
+        private async Task AddResultFeatures(FeatureClass fc) {
+            EditOperation featOp = new EditOperation();
+            featOp.Callback(context => {
+                foreach (Result result in Results) {
+                    using (RowBuffer row = fc.CreateRowBuffer()) {
+                        row["VehicleYear"] = result.Vehicle.Year;
+                        row["VehicleMake"] = result.Vehicle.Make;
+                        row["VehicleModel"] = result.Vehicle.Model;
+                        row["Vehicletype"] = result.Vehicle.Type;
+                        row["VehicleMPG"] = result.Vehicle.Mpg;
+                        row["OriginalSymbolColor"] = result.Color;
+                        row["PADDZone"] = result.PaddZone;
+                        row["DOEGasPricePerGallon"] = result.DollarsPerGallon;
+                        row["MilesPerDollar"] = result.MilesPerDollar;
+                        row["DriveDistanceMiles"] = result.DriveDistMi;
+                        row["ResultDateTime"] = result.ResultDateTimeUTC;
+                        row[fc.GetDefinition().GetShapeField()] = result.DriveServiceArea;
+
+                        using (Feature feat = fc.CreateRow(row)) {
+                            context.Invalidate(feat);
+                        }
+                    }
+                }
+            }, fc);
+            bool success = featOp.Execute();
+            if (!success) throw new Exception("Error adding result features: " + featOp.ErrorMessage);
+            success = await Project.Current.SaveEditsAsync();
+            if (!success) throw new Exception("Failure while saving result features");
         }
 
         private async Task AddResultFcFields(FeatureClass fc) {
@@ -403,7 +469,7 @@ namespace Esri.APL.MilesPerDollar {
             CheckAddFieldGpSuccess(resCreateField);
 
             fieldName = "OriginalSymbolColor";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 7);
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 9);
             resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
             CheckAddFieldGpSuccess(resCreateField);
 
@@ -425,6 +491,12 @@ namespace Esri.APL.MilesPerDollar {
 
             fieldName = "DriveDistanceMiles";
             gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT");
+            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
+            CheckAddFieldGpSuccess(resCreateField);
+
+            // Result date/time
+            fieldName = "ResultDateTime";
+            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "DATE");
             resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
             CheckAddFieldGpSuccess(resCreateField);
 
