@@ -619,8 +619,7 @@ namespace Esri.APL.MilesPerDollar {
                 return ptNoZ;
             });
 
-            // ARGH! No corresponding type for the needed GPFeatureRecordSetLayer parameter!
-            //TODO blog about this...stuff
+            // No corresponding type for the needed GPFeatureRecordSetLayer parameter
             string sStartGeom = ptStartLocNoZ.ToJson();
             string sStartLocParam = "{\"geometryType\":\"esriGeometryPoint\",\"features\":[{\"geometry\":" + sStartGeom + "}]}";
 
@@ -753,7 +752,7 @@ namespace Esri.APL.MilesPerDollar {
         /// <summary>
         /// Get the single instance of the ViewModel. This is a way to pass data, or execute code from, other code-behinds.
         /// </summary>
-        internal static VehiclesPaneViewModel instance {
+        internal static VehiclesPaneViewModel Instance {
             get {
                 if (_instance == null) {
                     _instance = (VehiclesPaneViewModel)FrameworkApplication.DockPaneManager.Find(DOCKPANE_ID);

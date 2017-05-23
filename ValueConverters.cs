@@ -62,7 +62,7 @@ namespace Esri.APL.MilesPerDollar {
     public class PADDZoneToFuelPriceString : IValueConverter {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
             string ret = "<unavailable>";
-            Dictionary<string, double> pz2fc = VehiclesPaneViewModel.instance.PADDZoneToFuelCost;
+            Dictionary<string, double> pz2fc = VehiclesPaneViewModel.Instance.PADDZoneToFuelCost;
             double dVal;
             if (value != null && pz2fc != null && pz2fc.TryGetValue(value as string, out dVal))
                 ret = dVal.ToString();
