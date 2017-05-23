@@ -36,7 +36,7 @@ namespace Esri.APL.MilesPerDollar {
             //Task task = VehiclesPaneViewModel.instance.PerformAnalysis(geometry as MapPoint, mapView);
 
             ProgressorSource ps = new ProgressorSource("Running the drive distance analysis...");
-            QueuedTask.Run(() => VehiclesPaneViewModel.instance.PerformAnalysis(geometry as MapPoint, mapView, ps), ps.Progressor);
+            QueuedTask.Run(() => VehiclesPaneViewModel.Instance.PerformAnalysis(geometry as MapPoint, mapView, ps), ps.Progressor);
 
             //Task<dynamic> saResult = QueuedTask.Run(() => {
             //    return VehiclesPaneViewModel.instance.PerformAnalysis(geometry as MapPoint);

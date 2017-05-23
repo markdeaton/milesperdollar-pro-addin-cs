@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ArcGIS.Desktop.Framework;
-using ArcGIS.Desktop.Framework.Contracts;
 using System.Xml.Linq;
 using System.Collections.ObjectModel;
 using System.Windows.Data;
@@ -14,19 +13,20 @@ using System.Windows.Input;
 using System.Net;
 using Excel;
 using System.Data;
-using ArcGIS.Core.Geometry;
 using Newtonsoft.Json;
 
 using System.Collections.Specialized;
-using ArcGIS.Desktop.Framework.Threading.Tasks;
-using ArcGIS.Desktop.Mapping;
-using ArcGIS.Core.CIM;
 using Newtonsoft.Json.Linq;
 using System.Windows.Media;
-using ArcGIS.Desktop.Core;
+using ArcGIS.Desktop.Framework.Contracts;
+using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Core.Data;
+using ArcGIS.Desktop.Mapping;
+using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
+using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Editing;
+using ArcGIS.Core.CIM;
 
 namespace Esri.APL.MilesPerDollar {
     internal class VehiclesPaneViewModel : DockPane {
@@ -223,7 +223,7 @@ namespace Esri.APL.MilesPerDollar {
         }
         private void GetVehicleYears() {
             var qryYears = from vehicle in _xmlAllVehicles.Root.Elements("vehicle")
-                           orderby vehicle.Attribute("year").Value
+                           orderby vehicle.Attribute("year").Value descending
                            select vehicle.Attribute("year").Value;
             VehicleYears = new ObservableCollection<string>(qryYears.Distinct());
         }
@@ -367,7 +367,7 @@ namespace Esri.APL.MilesPerDollar {
                             throw new Exception("Error opening or creating feature class", e);
                         }
                     flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName) ??
-                                LayerFactory.CreateFeatureLayer(fc, MapView.Active.Map, 0);
+                                LayerFactory.Instance.CreateFeatureLayer(fc, MapView.Active.Map, 0);
                        
                     } else {
                         fc = flResults.GetFeatureClass();
@@ -619,8 +619,8 @@ namespace Esri.APL.MilesPerDollar {
                 return ptNoZ;
             });
 
-            // ARGH! No corresponding type for the needed GPFeatureRecordSetLayer parameter!
-            //TODO blog about this...stuff
+            // No corresponding type for the needed GPFeatureRecordSetLayer parameter!
+            //TODO blog about handling REST GP service parameter itypes
             string sStartGeom = ptStartLocNoZ.ToJson();
             string sStartLocParam = "{\"geometryType\":\"esriGeometryPoint\",\"features\":[{\"geometry\":" + sStartGeom + "}]}";
 
@@ -688,12 +688,12 @@ namespace Esri.APL.MilesPerDollar {
                     Polygon polyNoSR = PolygonBuilder.FromJson(sGeom);
                     return PolygonBuilder.CreatePolygon(polyNoSR, sr);
                 });
-                CIMStroke outline = SymbolFactory.ConstructStroke(ColorFactory.BlackRGB, 1.0, SimpleLineStyle.Solid);
-                CIMPolygonSymbol symPoly = SymbolFactory.ConstructPolygonSymbol(
-                    ColorFactory.CreateRGBColor(color.R, color.G, color.B, RESULT_OPACITY_PCT),
+                CIMStroke outline = SymbolFactory.Instance.ConstructStroke(ColorFactory.Instance.BlackRGB, 1.0, SimpleLineStyle.Solid);
+                CIMPolygonSymbol symPoly = SymbolFactory.Instance.ConstructPolygonSymbol(
+                    ColorFactory.Instance.CreateRGBColor(color.R, color.G, color.B, RESULT_OPACITY_PCT),
                     SimpleFillStyle.Solid, outline);
                 CIMSymbolReference sym = symPoly.MakeSymbolReference();
-                CIMSymbolReference symDef = SymbolFactory.DefaultPolygonSymbol.MakeSymbolReference();
+                CIMSymbolReference symDef = SymbolFactory.Instance.DefaultPolygonSymbol.MakeSymbolReference();
                 graphic = await QueuedTask.Run(() => {
                     return mapView.AddOverlay(poly, sym);
                 });
@@ -753,7 +753,7 @@ namespace Esri.APL.MilesPerDollar {
         /// <summary>
         /// Get the single instance of the ViewModel. This is a way to pass data, or execute code from, other code-behinds.
         /// </summary>
-        internal static VehiclesPaneViewModel instance {
+        internal static VehiclesPaneViewModel Instance {
             get {
                 if (_instance == null) {
                     _instance = (VehiclesPaneViewModel)FrameworkApplication.DockPaneManager.Find(DOCKPANE_ID);
