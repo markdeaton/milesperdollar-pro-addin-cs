@@ -223,7 +223,7 @@ namespace Esri.APL.MilesPerDollar {
         }
         private void GetVehicleYears() {
             var qryYears = from vehicle in _xmlAllVehicles.Root.Elements("vehicle")
-                           orderby vehicle.Attribute("year").Value
+                           orderby vehicle.Attribute("year").Value descending
                            select vehicle.Attribute("year").Value;
             VehicleYears = new ObservableCollection<string>(qryYears.Distinct());
         }

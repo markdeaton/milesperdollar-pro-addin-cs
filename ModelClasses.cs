@@ -99,7 +99,6 @@ namespace Esri.APL.MilesPerDollar {
         private double _driveDistM;
         private string _paddZone;
         private double _dollarsPerGallon;
-        private double _milesPerDollar;
         private string _color;
         private DateTime _resultDateTimeUTC = DateTime.UtcNow;
         private IDisposable _driveServiceAreaGraphic, _driveCircularBoundGraphic;
