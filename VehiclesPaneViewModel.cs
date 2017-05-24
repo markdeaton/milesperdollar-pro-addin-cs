@@ -41,7 +41,7 @@ namespace Esri.APL.MilesPerDollar {
         private ObservableCollection<Vehicle> _selectedVehicles;
 
         private ObservableCollection<string> _vehicleYears, _vehicleMakes, _vehicleModels, _vehicleTypes;
-        
+
         // Since we're updating the dropdowns on the UI thread, no need to use the 
         // synchronization pattern the way we do with the Results collection.
         //private readonly ReadOnlyObservableCollection<string> _readonlyVehicleYears;
@@ -52,7 +52,7 @@ namespace Esri.APL.MilesPerDollar {
 
         private Dictionary<string, double> _paddZoneToFuelCost = new Dictionary<string, double>();
         public Dictionary<string, double> PADDZoneToFuelCost {
-            get { return _paddZoneToFuelCost;  }
+            get { return _paddZoneToFuelCost; }
             set { _paddZoneToFuelCost = value; }
         }
 
@@ -78,18 +78,18 @@ namespace Esri.APL.MilesPerDollar {
 
         public ObservableCollection<string> VehicleModels {
             get { return _vehicleModels; }
-            set { SetProperty( ref _vehicleModels, value); }
+            set { SetProperty(ref _vehicleModels, value); }
         }
 
         public ObservableCollection<string> VehicleTypes {
             get { return _vehicleTypes; }
-            set { SetProperty( ref _vehicleTypes, value); }
+            set { SetProperty(ref _vehicleTypes, value); }
         }
 
         public string SelectedVehicleYear {
             get { return _selectedVehicleYear; }
             set {
-                SetProperty( ref _selectedVehicleYear, value);
+                SetProperty(ref _selectedVehicleYear, value);
                 SelectedVehicleMake = SelectedVehicleModel = SelectedVehicleType = null;
                 GetVehicleMakes();
             }
@@ -118,11 +118,11 @@ namespace Esri.APL.MilesPerDollar {
             set {
                 SetProperty(ref _selectedVehicleType, value);
                 IEnumerable<XElement> xVehicles = from vehicle in _xmlAllVehicles.Root.Elements("vehicle")
-                                   where vehicle.Attribute("year").Value == SelectedVehicleYear &&
-                                         vehicle.Attribute("make").Value == SelectedVehicleMake &&
-                                         vehicle.Attribute("model").Value == SelectedVehicleModel &&
-                                         vehicle.Attribute("engine").Value == SelectedVehicleType
-                                   select vehicle;
+                                                  where vehicle.Attribute("year").Value == SelectedVehicleYear &&
+                                                        vehicle.Attribute("make").Value == SelectedVehicleMake &&
+                                                        vehicle.Attribute("model").Value == SelectedVehicleModel &&
+                                                        vehicle.Attribute("engine").Value == SelectedVehicleType
+                                                  select vehicle;
                 XElement xVehicle = xVehicles.Count() > 0 ? xVehicles.First() : null;
                 SelectedVehicle = xVehicle;
             }
@@ -168,21 +168,13 @@ namespace Esri.APL.MilesPerDollar {
         //    }
         //}
 
-            // Wish we could do this, but the event gets called *after* the collection is cleared.
-            //private void OnResultsCleared(object sender, NotifyCollectionChangedEventArgs e) {
-            //if (e.Action == NotifyCollectionChangedAction.Reset)
-            //    foreach (Result result in Results) {
-            //        result.DriveServiceAreaGraphic.Dispose();
-            //    }
-            //}
-
         private void GetFuelPricePerPADDZone() {
-            try { 
+            try {
                 string sFuelPriceDataUrl = Properties.Settings.Default.FuelCostUrl;
                 HttpWebRequest req = (HttpWebRequest)WebRequest.Create(sFuelPriceDataUrl);
                 req.ContentType = "application/ms-excel";
                 Stream resp = null;
-                    resp = req.GetResponse().GetResponseStream();
+                resp = req.GetResponse().GetResponseStream();
                 MemoryStream ms = new MemoryStream(); resp.CopyTo(ms);
                 IExcelDataReader xldr = ExcelReaderFactory.CreateBinaryReader(ms);
                 DataTable priceSheet = xldr.AsDataSet().Tables[2];
@@ -240,16 +232,16 @@ namespace Esri.APL.MilesPerDollar {
                                   vehicle.Attribute("make").Value == SelectedVehicleMake
                             orderby vehicle.Attribute("model").Value
                             select vehicle.Attribute("model").Value;
-            VehicleModels = new ObservableCollection<string>(qryModels.Distinct());                            
+            VehicleModels = new ObservableCollection<string>(qryModels.Distinct());
         }
         private void GetVehicleTypes() {
             var qryTypes = from vehicle in _xmlAllVehicles.Root.Elements("vehicle")
-                            where vehicle.Attribute("year").Value == SelectedVehicleYear &&
-                                  vehicle.Attribute("make").Value == SelectedVehicleMake &&
-                                  vehicle.Attribute("model").Value == SelectedVehicleModel
-                            orderby vehicle.Attribute("engine").Value
-                            select vehicle.Attribute("engine").Value;
-            VehicleTypes = new ObservableCollection<string>(qryTypes.Distinct());                            
+                           where vehicle.Attribute("year").Value == SelectedVehicleYear &&
+                                 vehicle.Attribute("make").Value == SelectedVehicleMake &&
+                                 vehicle.Attribute("model").Value == SelectedVehicleModel
+                           orderby vehicle.Attribute("engine").Value
+                           select vehicle.Attribute("engine").Value;
+            VehicleTypes = new ObservableCollection<string>(qryTypes.Distinct());
         }
 
         #endregion
@@ -264,6 +256,7 @@ namespace Esri.APL.MilesPerDollar {
             _removeSelectedVehicleCommand = new RelayCommand((selected) => RemoveSelectedVehicle(selected), () => true);
             _startSAAnalysisCommand = new RelayCommand(() => StartSAAnalysis(), () => CanStartSAAnalysis());
             _saveResultsCommand = new RelayCommand(() => SaveResults(), () => CanSaveResults());
+            _resetAnalysisCommand = new RelayCommand(() => ResetAnalysis());
 
             _results = new ObservableCollection<Result>();
             BindingOperations.EnableCollectionSynchronization(_results, _lockResults);
@@ -276,10 +269,7 @@ namespace Esri.APL.MilesPerDollar {
             }
             // Clear out any onscreen graphics
             try {
-                foreach (Result result in Results) {
-                    result.DriveServiceAreaGraphic.Dispose();
-                    result.DriveCircularBoundGraphic.Dispose();
-                }                
+                Results.ClearResults();
             } catch (Exception e) {
                 System.Diagnostics.Debug.WriteLine("Error clearing result polygons: " + e.Message);
             }
@@ -321,6 +311,17 @@ namespace Esri.APL.MilesPerDollar {
             System.Diagnostics.Debug.WriteLine("RemoveSelectedVehicle: " + (selected as Vehicle)?.ToString());
             if (selected is Vehicle) SelectedVehicles.Remove((Vehicle)selected);
         }
+        #endregion
+
+        #region Reset Analysis command
+        private ICommand _resetAnalysisCommand;
+        public ICommand ResetAnalysisCommand => _resetAnalysisCommand;
+        public void ResetAnalysis() {
+            SelectedVehicles.Clear();
+            Results.ClearResults();
+            System.Diagnostics.Debug.WriteLine("Reset Analysis");
+        }
+
         #endregion
 
         #region Save Results command
@@ -366,9 +367,9 @@ namespace Esri.APL.MilesPerDollar {
                         } catch (Exception e) {
                             throw new Exception("Error opening or creating feature class", e);
                         }
-                    flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName) ??
-                                LayerFactory.CreateFeatureLayer(fc, MapView.Active.Map, 0);
-                       
+                        flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName) ??
+                                    LayerFactory.CreateFeatureLayer(fc, MapView.Active.Map, 0);
+                        flResults.SetName("Miles Per Dollar Analysis Results");
                     } else {
                         fc = flResults.GetFeatureClass();
                     }
@@ -390,10 +391,7 @@ namespace Esri.APL.MilesPerDollar {
                     }
 
                     // If we got here, it was sucessful; we can discard the graphic overlays
-                    foreach (Result result in Results) {
-                        result.DriveServiceAreaGraphic?.Dispose(); result.DriveCircularBoundGraphic?.Dispose();
-                    }
-                    Results.Clear();
+                    Results.ClearResults();
 
                     flResults?.SetVisibility(true);
                 } catch (Exception e) {
@@ -532,32 +530,6 @@ namespace Esri.APL.MilesPerDollar {
 
         private ICommand _startSAAnalysisCommand;
         public ICommand StartSAAnalysisCommand => _startSAAnalysisCommand;
-
-        //private ObservableCollection<IDisposable> _driveDistCircularBounds;
-        //public ObservableCollection<IDisposable> DriveDistCircularBounds {
-        //    get { return _driveDistCircularBounds; }
-        //    set { _driveDistCircularBounds = value; }
-        //}
-        //private void OnDriveDistPolysChanged(object sender, NotifyCollectionChangedEventArgs e) {
-        //    switch (e.Action) {
-        //        case NotifyCollectionChangedAction.Remove:
-        //        case NotifyCollectionChangedAction.Replace:
-        //        case NotifyCollectionChangedAction.Reset:
-        //            if (e.OldItems != null)
-        //                foreach (IDisposable graphic in e.OldItems) graphic.Dispose();
-        //            break;
-        //     }
-        //}
-        //private void OnDriveDistCircularBoundsChanged(object sender, NotifyCollectionChangedEventArgs e) {
-        //    switch (e.Action) {
-        //        case NotifyCollectionChangedAction.Remove:
-        //        case NotifyCollectionChangedAction.Replace:
-        //        case NotifyCollectionChangedAction.Reset:
-        //            if (e.OldItems != null)
-        //                foreach (IDisposable graphic in e.OldItems) graphic.Dispose();
-        //            break;
-        //     }
-        //}
         public bool CanStartSAAnalysis() {
             bool enoughVehiclesSelected = SelectedVehicles.Count > 0;
             bool mapPaneActive = FrameworkApplication.State.Contains(DAML.State.esri_mapping_mapPane);
@@ -569,7 +541,6 @@ namespace Esri.APL.MilesPerDollar {
             return oktoStartSAAnalysis;
         }
 
-        //TODO Blog about programmatic invocation of invisible MapTool
         string _previousActiveTool = null;
         private void StartSAAnalysis() {
             _previousActiveTool = FrameworkApplication.CurrentTool;
@@ -642,8 +613,8 @@ namespace Esri.APL.MilesPerDollar {
             }
 
             using (StreamReader sread = new StreamReader(wr.GetResponseStream()))
-            sResp = sread.ReadToEnd();
-            
+                sResp = sread.ReadToEnd();
+
             JObject respAnalysis = JObject.Parse(sResp);
 
             JArray feats = respAnalysis["results"][0]["value"]["features"] as JArray;
@@ -657,13 +628,8 @@ namespace Esri.APL.MilesPerDollar {
                 return srTemp;
             });
 
-            // Dispose all graphics before calling DriveDistPolys.Clear(); 
-            foreach (Result result in Results) {
-                result.DriveServiceAreaGraphic?.Dispose();
-                result.DriveCircularBoundGraphic?.Dispose();
-            }
-
-            /*lock (_lockResults)*/ Results.Clear();
+            /*lock (_lockResults)*/
+            Results.ClearResults();
 
             // Iterate backwards to add larger polygons behind smaller ones
 
@@ -700,7 +666,8 @@ namespace Esri.APL.MilesPerDollar {
                 result.DriveServiceArea = poly;
                 result.DriveServiceAreaGraphic = graphic;
                 result.DriveDistM = aryResFeats[iVeh]["attributes"]["ToBreak"].Value<double>();
-                /*lock (_lockResults)*/ Results.Add(result);
+                /*lock (_lockResults)*/
+                Results.Add(result);
             }
         }
 
@@ -729,7 +696,7 @@ namespace Esri.APL.MilesPerDollar {
                     aryResFeats.Insert(iCurrentResultPosition, duplicatedResult);
                     resultsDuplicatedSoFar++;
                 }
-        }
+            }
             return aryResFeats;
         }
         #endregion
@@ -773,6 +740,21 @@ namespace Esri.APL.MilesPerDollar {
         }
         #endregion
     }
+
+    #region Extension Methods
+    /// <summary>
+    /// Dispose of all polygon drive and circular bound graphics before clearing results
+    /// </summary>
+    internal static class ResultsExtensions {
+        internal static void ClearResults(this ObservableCollection<Result> results) {
+            foreach (Result result in results) {
+                result.DriveServiceAreaGraphic?.Dispose();
+                result.DriveCircularBoundGraphic?.Dispose();
+            }
+            results.Clear();
+        }
+    }
+    #endregion
 
     /// <summary>
     /// Button implementation to show the DockPane.
