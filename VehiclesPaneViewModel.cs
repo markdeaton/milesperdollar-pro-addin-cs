@@ -332,9 +332,9 @@ namespace Esri.APL.MilesPerDollar {
             return Results.Count > 0;
         }
         public void SaveResults() {
-            ProgressorSource ps = new ProgressorSource("Saving your results...");
             // Check for a feature layer connected to a feature class with the right name, type, etc.
-            Task task = QueuedTask.Run(async () => {
+            QueuedTask.Run(async () => {
+                ProgressDialog pd;
                 Geodatabase fgdb = null;
                 try {
                     string resultFcName = Properties.Settings.Default.ResultFeatureClassName;
@@ -352,43 +352,44 @@ namespace Esri.APL.MilesPerDollar {
                                 fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
                             } catch (GeodatabaseException) {
                                 // Create results feature class
-                                ps.Status = "Creating feature class...";
+                                pd = new ProgressDialog("Creating feature class..."); pd.Show();
+                                string sTemplatePath = Path.Combine(Environment.CurrentDirectory, @"Resources\Template.gdb\MilesPerDollar_template");
                                 gpParams = Geoprocessing.MakeValueArray(
-                                    defFgdbPath, resultFcName, "POLYGON", null, null, null,
+                                    defFgdbPath, resultFcName, "POLYGON", sTemplatePath, null, null,
                                     SpatialReferenceBuilder.CreateSpatialReference(Properties.Settings.Default.ResultFeatureClassSRWkid));
-                                IGPResult resCreateFC = await Geoprocessing.ExecuteToolAsync("management.CreateFeatureclass", gpParams);
+                                IGPResult resCreateFC = await Geoprocessing.ExecuteToolAsync("management.CreateFeatureclass", gpParams, flags:GPExecuteToolFlags.None);
                                 if (resCreateFC.IsFailed) {
                                     List<string> errMsgs = resCreateFC.ErrorMessages.Select(errMsg => errMsg.Text).ToList();
                                     string sErrMsgs = String.Join("\n", errMsgs);
                                     throw new Exception("Error creating results feature class:" + sErrMsgs);
                                 }
+                                pd.Hide();
                                 fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
                             }
                         } catch (Exception e) {
                             throw new Exception("Error opening or creating feature class", e);
                         }
-                        flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName) ??
-                                    LayerFactory.CreateFeatureLayer(fc, MapView.Active.Map, 0);
-                        flResults.SetName("Miles Per Dollar Analysis Results");
+                        flResults = LayerFactory.CreateFeatureLayer(fc, MapView.Active.Map, 0, "Miles Per Dollar Analysis Results");
                     } else {
                         fc = flResults.GetFeatureClass();
                     }
 
                     flResults?.SetVisibility(false);
-                    try {
-                        ps.Status = "Adding fields to feature class...";
-                        await AddResultFcFields(fc);
-                    } catch (Exception e) {
-                        throw new Exception("Error adding fields to result feature class", e);
-                    }
+
+                    //pd = new ProgressDialog("Creating result schema..."); pd.Show();
+                    //try {
+                    //    await AddResultFcFields(fc);
+                    //} catch (Exception e) {
+                    //    throw new Exception("Error adding fields to result feature class", e);
+                    //} finally { pd.Hide();  }
 
                     // By default, the GDB is added to the map via a new feature layer
+                    pd = new ProgressDialog("Creating result features..."); pd.Show();
                     try {
-                        ps.Status = "Creating result features...";
                         await AddResultFeatures(fc);
                     } catch (Exception e) {
                         throw new Exception("Error creating result features", e);
-                    }
+                    } finally { pd.Hide(); }
 
                     // If we got here, it was sucessful; we can discard the graphic overlays
                     Results.ClearResults();
@@ -401,7 +402,7 @@ namespace Esri.APL.MilesPerDollar {
                 } finally {
                     fgdb?.Dispose();
                 }
-            }, ps.Progressor);
+            });
         }
 
         private async Task AddResultFeatures(FeatureClass fc) {
@@ -428,102 +429,102 @@ namespace Esri.APL.MilesPerDollar {
                     }
                 }
             }, fc);
-            bool success = featOp.Execute();
+            bool success = await featOp.ExecuteAsync();
             if (!success) throw new Exception("Error adding result features: " + featOp.ErrorMessage);
             success = await Project.Current.SaveEditsAsync();
             if (!success) throw new Exception("Failure while saving result features");
         }
 
-        private async Task AddResultFcFields(FeatureClass fc) {
-            // Add Fields
-            IGPResult resCreateField;
-            IReadOnlyList<string> gpParams;
-            string fieldName;
+        //private async Task AddResultFcFields(FeatureClass fc) {
+        //    // Add Fields
+        //    IGPResult resCreateField;
+        //    IReadOnlyList<string> gpParams;
+        //    string fieldName;
 
-            // Vehicle year, make, model, type, MPG
-            fieldName = "VehicleYear";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 4);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    // Vehicle year, make, model, type, MPG
+        //    fieldName = "VehicleYear";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 4);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "VehicleMake";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "VehicleMake";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "VehicleModel";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "VehicleModel";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "VehicleType";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "VehicleType";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "VehicleMPG";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "SHORT");
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "VehicleMPG";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "SHORT");
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "OriginalSymbolColor";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 9);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "OriginalSymbolColor";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 9);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            // Result PADD zone, dollars per gallon, miles per dollar, drive distance (miles)
-            fieldName = "PADDZone";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 5);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    // Result PADD zone, dollars per gallon, miles per dollar, drive distance (miles)
+        //    fieldName = "PADDZone";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 5);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "DOEGasPricePerGallon";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT");
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "DOEGasPricePerGallon";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT");
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "MilesPerDollar";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT", null, null, 100);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "MilesPerDollar";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT", null, null, 100);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "DriveDistanceMiles";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT");
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "DriveDistanceMiles";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT");
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            // Result date/time
-            fieldName = "ResultDateTime";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "DATE");
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    // Result date/time
+        //    fieldName = "ResultDateTime";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "DATE");
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            // Comments
-            fieldName = "Comments";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 255);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
-        }
+        //    // Comments
+        //    fieldName = "Comments";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 255);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
+        //}
 
-        private void CheckAddFieldGpSuccess(IGPResult gpResult) {
-            string sField = gpResult.Parameters.ToArray()[1].Item3;
-            string sMsg;
+        //private void CheckAddFieldGpSuccess(IGPResult gpResult) {
+        //    string sField = gpResult.Parameters.ToArray()[1].Item3;
+        //    string sMsg;
 
-            if (gpResult.IsFailed) {
-                List<string> errMsgs = gpResult.ErrorMessages.Select(errMsg => errMsg.Text).ToList();
-                string sErrMsgs = String.Join("\n", errMsgs);
-                sMsg = "Error adding field " + sField + ": " + errMsgs;
-                System.Diagnostics.Debug.WriteLine(sMsg);
-                throw new Exception(sMsg);
-            } else if (gpResult.IsCanceled) {
-                sMsg = "Canceled addding field " + sField;
-                System.Diagnostics.Debug.WriteLine(sMsg);
-                throw new Exception(sMsg);
-            } else {
-                sMsg = "Successfully added field " + sField;
-                System.Diagnostics.Debug.WriteLine(sMsg);
-            }
-        }
+        //    if (gpResult.IsFailed) {
+        //        List<string> errMsgs = gpResult.ErrorMessages.Select(errMsg => errMsg.Text).ToList();
+        //        string sErrMsgs = String.Join("\n", errMsgs);
+        //        sMsg = "Error adding field " + sField + ": " + errMsgs;
+        //        System.Diagnostics.Debug.WriteLine(sMsg);
+        //        throw new Exception(sMsg);
+        //    } else if (gpResult.IsCanceled) {
+        //        sMsg = "Canceled addding field " + sField;
+        //        System.Diagnostics.Debug.WriteLine(sMsg);
+        //        throw new Exception(sMsg);
+        //    } else {
+        //        sMsg = "Successfully added field " + sField;
+        //        System.Diagnostics.Debug.WriteLine(sMsg);
+        //    }
+        //}
         #endregion
 
         #region Start Analysis command / Perform Analysis
@@ -549,7 +550,8 @@ namespace Esri.APL.MilesPerDollar {
 
 
         internal async Task PerformAnalysis(MapPoint ptStartLoc, MapView mapView, ProgressorSource ps) {
-            ps.Message = "Gathering and verifying parameter data...";
+            ps.Progressor.Message = "Running the analysis...";
+            ps.Progressor.Status = "Gathering and verifying parameter data";
             string sReqUrl = Properties.Settings.Default.QryPointToState;
             string sReq = String.Format("{0}?returnGeometry=false&returnDistinctValues=false&geometry={1}&geometryType=esriGeometryPoint&f=json&outFields=*&spatialRel=esriSpatialRelIntersects",
                             sReqUrl, ptStartLoc.ToJson());
@@ -596,7 +598,7 @@ namespace Esri.APL.MilesPerDollar {
 
 
             // Run the query
-            ps.Message = "Running the drive distance analysis...";
+            ps.Progressor.Status = "Executing the analysis";
             string sGPUrl = Properties.Settings.Default.GPFindSA;
             sGPUrl += String.Format("?Distances={0}&Start_Location={1}&f=json", sDistsParam, sStartLocParam);
             HttpWebRequest reqSA = (HttpWebRequest)WebRequest.Create(sGPUrl);
@@ -611,6 +613,9 @@ namespace Esri.APL.MilesPerDollar {
                 ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error running analysis: " + e.Message);
                 return;
             }
+
+            // Show the results
+            ps.Progressor.Status = "Processing the results";
 
             using (StreamReader sread = new StreamReader(wr.GetResponseStream()))
                 sResp = sread.ReadToEnd();

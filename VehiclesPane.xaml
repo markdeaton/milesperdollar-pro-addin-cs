@@ -160,7 +160,8 @@
                     </Button>
                 </DockPanel>
             </DockPanel>
-            <DockPanel Visibility="{Binding Results.Count, Converter={StaticResource collectionCountToVisibility}}" 
+            <!---->
+            <DockPanel  Visibility="{Binding Results.Count, Converter={StaticResource collectionCountToVisibility}}"
                   Grid.Row="3" MinHeight="100" Margin="0,8,0,0">
                 <DockPanel DockPanel.Dock="Top">
                     <Image DockPanel.Dock="Right" Source="Images/about24x24.png" Height="24"
