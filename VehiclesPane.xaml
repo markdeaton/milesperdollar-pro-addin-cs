@@ -34,7 +34,7 @@
             <DockPanel Grid.Row="0" LastChildFill="true" KeyboardNavigation.TabNavigation="Local">
                 <Image DockPanel.Dock="Left" Source="Images/George.png" Height="64"/>
                 <Image DockPanel.Dock="Right" Source="Images/about24x24.png" Height="24" VerticalAlignment="Center" HorizontalAlignment="Right"
-                    ToolTip="About the data" MouseLeftButtonUp="Image_MouseLeftButtonUp"/>
+                    ToolTip="About vehicle MPG data" MouseLeftButtonUp="AboutVehicleData_MouseLeftButtonUp"/>
                 <TextBlock Grid.Column="1" Text="{Binding Heading}" DockPanel.Dock="Top"
                        VerticalAlignment="Center" HorizontalAlignment="Center"
                        FontSize="20" FontWeight="Light" Margin="0,0,32,0">
@@ -95,7 +95,7 @@
                 ToolTip="Choose a year, make, model, and engine type">
                     Add Vehicle
                 </Button>
-
+ 
                 <ListBox x:Name="lstVehiclesSelected" BorderThickness="1,1,1,1" Margin="0,8,0,0"
                      DockPanel.Dock="Top" Height="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ItemsSource="{Binding SelectedVehicles}" Visibility="{Binding SelectedVehicles.Count, Converter={StaticResource collectionCountToVisibility}}">
@@ -137,11 +137,15 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-                <Button Height="Auto" HorizontalAlignment="Center" Padding="8,3,8,3" Margin="0,8,0,0" DockPanel.Dock="Top" 
+                <DockPanel Margin="10,8,0,0">
+                    <Button Padding="8,3,8,3" DockPanel.Dock="Left" Content="Reset" ToolTip="Clear all selected vehicles and results" 
+                            Style="{StaticResource Esri_SimpleButton}" HorizontalAlignment="Left"
+                            Command="{Binding ResetAnalysisCommand}"/>
+                    <Button Padding="8,3,8,3" DockPanel.Dock="Right" 
                         Command="{Binding StartSAAnalysisCommand}" Style="{StaticResource Esri_SimpleButton}"
-                    ToolTipService.ShowOnDisabled="True">Start Analysis
-                    <Button.ToolTip>
-                        <TextBlock>
+                        ToolTipService.ShowOnDisabled="True" Content="Start Analysis" HorizontalAlignment="Right">
+                        <Button.ToolTip>
+                            <TextBlock>
                         1) Make sure a map tab is open.
                         <LineBreak/>
                         2) Select one to five vehicles.
@@ -151,21 +155,24 @@
                         4) Then click this button.
                         <LineBreak/>
                         5) Click a start location on the map.
-                        </TextBlock>
-                    </Button.ToolTip>
-                    <!--<TextBlock Width="Auto" TextAlignment="Center" TextWrapping="Wrap" Margin="5,2,5,2">
-                        Start Analysis
-                    </TextBlock>-->
-                </Button>
+                            </TextBlock>
+                        </Button.ToolTip>
+                    </Button>
+                </DockPanel>
             </DockPanel>
-            <DockPanel Visibility="{Binding Results.Count, Converter={StaticResource collectionCountToVisibility}}" 
+            <!---->
+            <DockPanel  Visibility="{Binding Results.Count, Converter={StaticResource collectionCountToVisibility}}"
                   Grid.Row="3" MinHeight="100" Margin="0,8,0,0">
-                <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0">
-                <Run>Selected PADD zone: </Run>
-                <Bold><Run Text="{Binding SelectedPADDZone}"/></Bold>
-                <LineBreak/>
-                <Run Text="{Binding Path=SelectedPADDZone, Converter={StaticResource paddZoneToFuelPrice}, StringFormat='${0} per gallon average'}"/>
-                </TextBlock>
+                <DockPanel DockPanel.Dock="Top">
+                    <Image DockPanel.Dock="Right" Source="Images/about24x24.png" Height="24"
+                        ToolTip="About fuel price data" MouseLeftButtonUp="AboutFuelPriceData_MouseLeftButtonUp" VerticalAlignment="Top" HorizontalAlignment="Right"/>
+                    <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center">
+                        <Run>Selected PADD zone: </Run>
+                        <Bold><Run Text="{Binding SelectedPADDZone}"/></Bold>
+                        <LineBreak/>
+                        <Run Text="{Binding Path=SelectedPADDZone, Converter={StaticResource paddZoneToFuelPrice}, StringFormat='${0} per gallon average'}"/>
+                    </TextBlock>
+                </DockPanel>
                 <ListBox DockPanel.Dock="Top" ItemsSource="{Binding Results}" FocusVisualStyle="{x:Null}" Margin="0,8,0,0">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
@@ -201,17 +208,17 @@
                                 <Rectangle Grid.RowSpan="3" Grid.Row="1" Grid.Column="0" Width="8" HorizontalAlignment="Stretch"
                                        Fill="{Binding Color, Converter={StaticResource vehicleSolidColorBrushConverter}}"
                                        Stroke="{DynamicResource Esri_Black}" Margin="0,0,5,0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding}" DockPanel.Dock="Top"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Path=Vehicle.LongDescription}" DockPanel.Dock="Top"/>
                                 <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Path=Vehicle.Mpg, StringFormat='\{0} miles per gallon'}" DockPanel.Dock="Top"/>
                                 <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Path=DriveDistMi, StringFormat='\{0} miles on one dollar'}" DockPanel.Dock="Top"/>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-                <Button Style="{StaticResource Esri_SimpleButton}" 
-                        DockPanel.Dock="Top" HorizontalAlignment="Center" VerticalAlignment="Top" Padding="8,3,8,3" Margin="0,8,0,0" 
+                    <Button Style="{StaticResource Esri_SimpleButton}" 
+                        DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,8,0,0" Padding="8,3,8,3"
                         ToolTip="This will save results to a feature class in the project's default geodatabase for analysis or publishing."
-                        Content="Save Results" Command="{Binding SaveResultsCommand}"/>
+                        Content="Save Results" Command="{Binding SaveResultsCommand}" VerticalAlignment="Top"/>
             </DockPanel>
         </Grid>
     </ScrollViewer>

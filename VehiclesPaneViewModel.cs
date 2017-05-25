@@ -1,32 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using ArcGIS.Desktop.Framework;
-using System.Xml.Linq;
-using System.Collections.ObjectModel;
-using System.Windows.Data;
-using System.IO;
-using System.Windows;
-using System.Globalization;
-using System.Windows.Input;
-using System.Net;
-using Excel;
-using System.Data;
-using Newtonsoft.Json;
-
-using System.Collections.Specialized;
-using Newtonsoft.Json.Linq;
-using System.Windows.Media;
-using ArcGIS.Desktop.Framework.Contracts;
-using ArcGIS.Desktop.Framework.Threading.Tasks;
+﻿using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
-using ArcGIS.Desktop.Mapping;
+using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
-using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Editing;
-using ArcGIS.Core.CIM;
+using ArcGIS.Desktop.Framework;
+using ArcGIS.Desktop.Framework.Contracts;
+using ArcGIS.Desktop.Framework.Threading.Tasks;
+using ArcGIS.Desktop.Mapping;
+using Excel;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Data;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Xml.Linq;
 
 namespace Esri.APL.MilesPerDollar {
     internal class VehiclesPaneViewModel : DockPane {
@@ -41,7 +37,7 @@ namespace Esri.APL.MilesPerDollar {
         private ObservableCollection<Vehicle> _selectedVehicles;
 
         private ObservableCollection<string> _vehicleYears, _vehicleMakes, _vehicleModels, _vehicleTypes;
-        
+
         // Since we're updating the dropdowns on the UI thread, no need to use the 
         // synchronization pattern the way we do with the Results collection.
         //private readonly ReadOnlyObservableCollection<string> _readonlyVehicleYears;
@@ -52,7 +48,7 @@ namespace Esri.APL.MilesPerDollar {
 
         private Dictionary<string, double> _paddZoneToFuelCost = new Dictionary<string, double>();
         public Dictionary<string, double> PADDZoneToFuelCost {
-            get { return _paddZoneToFuelCost;  }
+            get { return _paddZoneToFuelCost; }
             set { _paddZoneToFuelCost = value; }
         }
 
@@ -78,18 +74,18 @@ namespace Esri.APL.MilesPerDollar {
 
         public ObservableCollection<string> VehicleModels {
             get { return _vehicleModels; }
-            set { SetProperty( ref _vehicleModels, value); }
+            set { SetProperty(ref _vehicleModels, value); }
         }
 
         public ObservableCollection<string> VehicleTypes {
             get { return _vehicleTypes; }
-            set { SetProperty( ref _vehicleTypes, value); }
+            set { SetProperty(ref _vehicleTypes, value); }
         }
 
         public string SelectedVehicleYear {
             get { return _selectedVehicleYear; }
             set {
-                SetProperty( ref _selectedVehicleYear, value);
+                SetProperty(ref _selectedVehicleYear, value);
                 SelectedVehicleMake = SelectedVehicleModel = SelectedVehicleType = null;
                 GetVehicleMakes();
             }
@@ -118,11 +114,11 @@ namespace Esri.APL.MilesPerDollar {
             set {
                 SetProperty(ref _selectedVehicleType, value);
                 IEnumerable<XElement> xVehicles = from vehicle in _xmlAllVehicles.Root.Elements("vehicle")
-                                   where vehicle.Attribute("year").Value == SelectedVehicleYear &&
-                                         vehicle.Attribute("make").Value == SelectedVehicleMake &&
-                                         vehicle.Attribute("model").Value == SelectedVehicleModel &&
-                                         vehicle.Attribute("engine").Value == SelectedVehicleType
-                                   select vehicle;
+                                                  where vehicle.Attribute("year").Value == SelectedVehicleYear &&
+                                                        vehicle.Attribute("make").Value == SelectedVehicleMake &&
+                                                        vehicle.Attribute("model").Value == SelectedVehicleModel &&
+                                                        vehicle.Attribute("engine").Value == SelectedVehicleType
+                                                  select vehicle;
                 XElement xVehicle = xVehicles.Count() > 0 ? xVehicles.First() : null;
                 SelectedVehicle = xVehicle;
             }
@@ -168,21 +164,13 @@ namespace Esri.APL.MilesPerDollar {
         //    }
         //}
 
-            // Wish we could do this, but the event gets called *after* the collection is cleared.
-            //private void OnResultsCleared(object sender, NotifyCollectionChangedEventArgs e) {
-            //if (e.Action == NotifyCollectionChangedAction.Reset)
-            //    foreach (Result result in Results) {
-            //        result.DriveServiceAreaGraphic.Dispose();
-            //    }
-            //}
-
         private void GetFuelPricePerPADDZone() {
-            try { 
+            try {
                 string sFuelPriceDataUrl = Properties.Settings.Default.FuelCostUrl;
                 HttpWebRequest req = (HttpWebRequest)WebRequest.Create(sFuelPriceDataUrl);
                 req.ContentType = "application/ms-excel";
                 Stream resp = null;
-                    resp = req.GetResponse().GetResponseStream();
+                resp = req.GetResponse().GetResponseStream();
                 MemoryStream ms = new MemoryStream(); resp.CopyTo(ms);
                 IExcelDataReader xldr = ExcelReaderFactory.CreateBinaryReader(ms);
                 DataTable priceSheet = xldr.AsDataSet().Tables[2];
@@ -240,16 +228,16 @@ namespace Esri.APL.MilesPerDollar {
                                   vehicle.Attribute("make").Value == SelectedVehicleMake
                             orderby vehicle.Attribute("model").Value
                             select vehicle.Attribute("model").Value;
-            VehicleModels = new ObservableCollection<string>(qryModels.Distinct());                            
+            VehicleModels = new ObservableCollection<string>(qryModels.Distinct());
         }
         private void GetVehicleTypes() {
             var qryTypes = from vehicle in _xmlAllVehicles.Root.Elements("vehicle")
-                            where vehicle.Attribute("year").Value == SelectedVehicleYear &&
-                                  vehicle.Attribute("make").Value == SelectedVehicleMake &&
-                                  vehicle.Attribute("model").Value == SelectedVehicleModel
-                            orderby vehicle.Attribute("engine").Value
-                            select vehicle.Attribute("engine").Value;
-            VehicleTypes = new ObservableCollection<string>(qryTypes.Distinct());                            
+                           where vehicle.Attribute("year").Value == SelectedVehicleYear &&
+                                 vehicle.Attribute("make").Value == SelectedVehicleMake &&
+                                 vehicle.Attribute("model").Value == SelectedVehicleModel
+                           orderby vehicle.Attribute("engine").Value
+                           select vehicle.Attribute("engine").Value;
+            VehicleTypes = new ObservableCollection<string>(qryTypes.Distinct());
         }
 
         #endregion
@@ -264,6 +252,7 @@ namespace Esri.APL.MilesPerDollar {
             _removeSelectedVehicleCommand = new RelayCommand((selected) => RemoveSelectedVehicle(selected), () => true);
             _startSAAnalysisCommand = new RelayCommand(() => StartSAAnalysis(), () => CanStartSAAnalysis());
             _saveResultsCommand = new RelayCommand(() => SaveResults(), () => CanSaveResults());
+            _resetAnalysisCommand = new RelayCommand(() => ResetAnalysis());
 
             _results = new ObservableCollection<Result>();
             BindingOperations.EnableCollectionSynchronization(_results, _lockResults);
@@ -276,10 +265,7 @@ namespace Esri.APL.MilesPerDollar {
             }
             // Clear out any onscreen graphics
             try {
-                foreach (Result result in Results) {
-                    result.DriveServiceAreaGraphic.Dispose();
-                    result.DriveCircularBoundGraphic.Dispose();
-                }                
+                Results.ClearResults();
             } catch (Exception e) {
                 System.Diagnostics.Debug.WriteLine("Error clearing result polygons: " + e.Message);
             }
@@ -323,6 +309,17 @@ namespace Esri.APL.MilesPerDollar {
         }
         #endregion
 
+        #region Reset Analysis command
+        private ICommand _resetAnalysisCommand;
+        public ICommand ResetAnalysisCommand => _resetAnalysisCommand;
+        public void ResetAnalysis() {
+            SelectedVehicles.Clear();
+            Results.ClearResults();
+            System.Diagnostics.Debug.WriteLine("Reset Analysis");
+        }
+
+        #endregion
+
         #region Save Results command
         public ICommand SaveResultsCommand => _saveResultsCommand;
         private ICommand _saveResultsCommand;
@@ -331,69 +328,71 @@ namespace Esri.APL.MilesPerDollar {
             return Results.Count > 0;
         }
         public void SaveResults() {
-            ProgressorSource ps = new ProgressorSource("Saving your results...");
             // Check for a feature layer connected to a feature class with the right name, type, etc.
-            Task task = QueuedTask.Run(async () => {
-                Geodatabase fgdb = null;
-                try {
-                    string resultFcName = Properties.Settings.Default.ResultFeatureClassName;
-                    List<FeatureLayer> featureLayers = MapView.Active.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
-                    FeatureLayer flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName);
-                    FeatureClass fc = null;
+            QueuedTask.Run(async () => {
+            ProgressDialog pd;
+            Geodatabase fgdb = null;
+            try {
+                string resultFcName = Properties.Settings.Default.ResultFeatureClassName;
+                List<FeatureLayer> featureLayers = MapView.Active.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
+                FeatureLayer flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName);
+                FeatureClass fc = null;
 
-                    if (flResults == null) {
-                        // Look for a FC to connect it to
-                        string defFgdbPath = Project.Current.DefaultGeodatabasePath;
+                if (flResults == null) {
+                    // Look for a FC to connect it to
+                    string defFgdbPath = Project.Current.DefaultGeodatabasePath;
+                    try {
+                        fgdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(defFgdbPath)));
+                        IReadOnlyList<string> gpParams;
                         try {
-                            fgdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(defFgdbPath)));
-                            IReadOnlyList<string> gpParams;
-                            try {
-                                fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
-                            } catch (GeodatabaseException) {
-                                // Create results feature class
-                                ps.Status = "Creating feature class...";
-                                gpParams = Geoprocessing.MakeValueArray(
-                                    defFgdbPath, resultFcName, "POLYGON", null, null, null,
-                                    SpatialReferenceBuilder.CreateSpatialReference(Properties.Settings.Default.ResultFeatureClassSRWkid));
-                                IGPResult resCreateFC = await Geoprocessing.ExecuteToolAsync("management.CreateFeatureclass", gpParams);
-                                if (resCreateFC.IsFailed) {
-                                    List<string> errMsgs = resCreateFC.ErrorMessages.Select(errMsg => errMsg.Text).ToList();
-                                    string sErrMsgs = String.Join("\n", errMsgs);
-                                    throw new Exception("Error creating results feature class:" + sErrMsgs);
-                                }
-                                fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
+                            fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
+                        } catch (GeodatabaseException) {
+                            // Create results feature class
+                            pd = new ProgressDialog("Creating feature class..."); pd.Show();
+                            //string sTemplatePath = Path.Combine(Environment.CurrentDirectory, @"Resources\Template.gdb\MilesPerDollar_template");
+                            string sTemplatePath = Path.Combine(
+                                System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),
+                                @"Resources\Template.gdb\MilesPerDollar_template");
+                            gpParams = Geoprocessing.MakeValueArray(
+                                defFgdbPath, resultFcName, "POLYGON", sTemplatePath, null, null,
+                                SpatialReferenceBuilder.CreateSpatialReference(Properties.Settings.Default.ResultFeatureClassSRWkid));
+                            IGPResult resCreateFC = await Geoprocessing.ExecuteToolAsync("management.CreateFeatureclass", gpParams, flags: GPExecuteToolFlags.None);
+                            if (resCreateFC.IsFailed) {
+                                pd.Hide();
+                                List<string> errMsgs = resCreateFC.ErrorMessages.Select(errMsg => errMsg.Text).ToList();
+                                string sErrMsgs = String.Join("\n", errMsgs);
+                                throw new Exception("Error creating results feature class:" + sErrMsgs);
                             }
+                            pd.Hide();
+                            fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
+                        }
                         } catch (Exception e) {
                             throw new Exception("Error opening or creating feature class", e);
                         }
-                    flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName) ??
-                                LayerFactory.Instance.CreateFeatureLayer(fc, MapView.Active.Map, 0);
-                       
+                        flResults = LayerFactory.Instance.CreateFeatureLayer(fc, MapView.Active.Map, 0, "Miles Per Dollar Analysis Results");
                     } else {
                         fc = flResults.GetFeatureClass();
                     }
 
                     flResults?.SetVisibility(false);
-                    try {
-                        ps.Status = "Adding fields to feature class...";
-                        await AddResultFcFields(fc);
-                    } catch (Exception e) {
-                        throw new Exception("Error adding fields to result feature class", e);
-                    }
+
+                    //pd = new ProgressDialog("Creating result schema..."); pd.Show();
+                    //try {
+                    //    await AddResultFcFields(fc);
+                    //} catch (Exception e) {
+                    //    throw new Exception("Error adding fields to result feature class", e);
+                    //} finally { pd.Hide();  }
 
                     // By default, the GDB is added to the map via a new feature layer
+                    pd = new ProgressDialog("Creating result features..."); pd.Show();
                     try {
-                        ps.Status = "Creating result features...";
                         await AddResultFeatures(fc);
                     } catch (Exception e) {
                         throw new Exception("Error creating result features", e);
-                    }
+                    } finally { pd.Hide(); }
 
                     // If we got here, it was sucessful; we can discard the graphic overlays
-                    foreach (Result result in Results) {
-                        result.DriveServiceAreaGraphic?.Dispose(); result.DriveCircularBoundGraphic?.Dispose();
-                    }
-                    Results.Clear();
+                    Results.ClearResults();
 
                     flResults?.SetVisibility(true);
                 } catch (Exception e) {
@@ -403,7 +402,7 @@ namespace Esri.APL.MilesPerDollar {
                 } finally {
                     fgdb?.Dispose();
                 }
-            }, ps.Progressor);
+            });
         }
 
         private async Task AddResultFeatures(FeatureClass fc) {
@@ -430,134 +429,108 @@ namespace Esri.APL.MilesPerDollar {
                     }
                 }
             }, fc);
-            bool success = featOp.Execute();
+            bool success = await featOp.ExecuteAsync();
             if (!success) throw new Exception("Error adding result features: " + featOp.ErrorMessage);
             success = await Project.Current.SaveEditsAsync();
             if (!success) throw new Exception("Failure while saving result features");
         }
 
-        private async Task AddResultFcFields(FeatureClass fc) {
-            // Add Fields
-            IGPResult resCreateField;
-            IReadOnlyList<string> gpParams;
-            string fieldName;
+        //private async Task AddResultFcFields(FeatureClass fc) {
+        //    // Add Fields
+        //    IGPResult resCreateField;
+        //    IReadOnlyList<string> gpParams;
+        //    string fieldName;
 
-            // Vehicle year, make, model, type, MPG
-            fieldName = "VehicleYear";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 4);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    // Vehicle year, make, model, type, MPG
+        //    fieldName = "VehicleYear";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 4);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "VehicleMake";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "VehicleMake";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "VehicleModel";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "VehicleModel";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "VehicleType";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "VehicleType";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 100);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "VehicleMPG";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "SHORT");
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "VehicleMPG";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "SHORT");
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "OriginalSymbolColor";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 9);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "OriginalSymbolColor";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 9);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            // Result PADD zone, dollars per gallon, miles per dollar, drive distance (miles)
-            fieldName = "PADDZone";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 5);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    // Result PADD zone, dollars per gallon, miles per dollar, drive distance (miles)
+        //    fieldName = "PADDZone";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 5);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "DOEGasPricePerGallon";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT");
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "DOEGasPricePerGallon";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT");
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "MilesPerDollar";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT", null, null, 100);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "MilesPerDollar";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT", null, null, 100);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            fieldName = "DriveDistanceMiles";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT");
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    fieldName = "DriveDistanceMiles";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "FLOAT");
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            // Result date/time
-            fieldName = "ResultDateTime";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "DATE");
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
+        //    // Result date/time
+        //    fieldName = "ResultDateTime";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "DATE");
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
 
-            // Comments
-            fieldName = "Comments";
-            gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 255);
-            resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams);
-            CheckAddFieldGpSuccess(resCreateField);
-        }
+        //    // Comments
+        //    fieldName = "Comments";
+        //    gpParams = Geoprocessing.MakeValueArray(fc, fieldName, "TEXT", null, null, 255);
+        //    resCreateField = await Geoprocessing.ExecuteToolAsync("management.AddField", gpParams, flags: GPExecuteToolFlags.None);
+        //    CheckAddFieldGpSuccess(resCreateField);
+        //}
 
-        private void CheckAddFieldGpSuccess(IGPResult gpResult) {
-            string sField = gpResult.Parameters.ToArray()[1].Item3;
-            string sMsg;
+        //private void CheckAddFieldGpSuccess(IGPResult gpResult) {
+        //    string sField = gpResult.Parameters.ToArray()[1].Item3;
+        //    string sMsg;
 
-            if (gpResult.IsFailed) {
-                List<string> errMsgs = gpResult.ErrorMessages.Select(errMsg => errMsg.Text).ToList();
-                string sErrMsgs = String.Join("\n", errMsgs);
-                sMsg = "Error adding field " + sField + ": " + errMsgs;
-                System.Diagnostics.Debug.WriteLine(sMsg);
-                throw new Exception(sMsg);
-            } else if (gpResult.IsCanceled) {
-                sMsg = "Canceled addding field " + sField;
-                System.Diagnostics.Debug.WriteLine(sMsg);
-                throw new Exception(sMsg);
-            } else {
-                sMsg = "Successfully added field " + sField;
-                System.Diagnostics.Debug.WriteLine(sMsg);
-            }
-        }
+        //    if (gpResult.IsFailed) {
+        //        List<string> errMsgs = gpResult.ErrorMessages.Select(errMsg => errMsg.Text).ToList();
+        //        string sErrMsgs = String.Join("\n", errMsgs);
+        //        sMsg = "Error adding field " + sField + ": " + errMsgs;
+        //        System.Diagnostics.Debug.WriteLine(sMsg);
+        //        throw new Exception(sMsg);
+        //    } else if (gpResult.IsCanceled) {
+        //        sMsg = "Canceled addding field " + sField;
+        //        System.Diagnostics.Debug.WriteLine(sMsg);
+        //        throw new Exception(sMsg);
+        //    } else {
+        //        sMsg = "Successfully added field " + sField;
+        //        System.Diagnostics.Debug.WriteLine(sMsg);
+        //    }
+        //}
         #endregion
 
         #region Start Analysis command / Perform Analysis
 
         private ICommand _startSAAnalysisCommand;
         public ICommand StartSAAnalysisCommand => _startSAAnalysisCommand;
-
-        //private ObservableCollection<IDisposable> _driveDistCircularBounds;
-        //public ObservableCollection<IDisposable> DriveDistCircularBounds {
-        //    get { return _driveDistCircularBounds; }
-        //    set { _driveDistCircularBounds = value; }
-        //}
-        //private void OnDriveDistPolysChanged(object sender, NotifyCollectionChangedEventArgs e) {
-        //    switch (e.Action) {
-        //        case NotifyCollectionChangedAction.Remove:
-        //        case NotifyCollectionChangedAction.Replace:
-        //        case NotifyCollectionChangedAction.Reset:
-        //            if (e.OldItems != null)
-        //                foreach (IDisposable graphic in e.OldItems) graphic.Dispose();
-        //            break;
-        //     }
-        //}
-        //private void OnDriveDistCircularBoundsChanged(object sender, NotifyCollectionChangedEventArgs e) {
-        //    switch (e.Action) {
-        //        case NotifyCollectionChangedAction.Remove:
-        //        case NotifyCollectionChangedAction.Replace:
-        //        case NotifyCollectionChangedAction.Reset:
-        //            if (e.OldItems != null)
-        //                foreach (IDisposable graphic in e.OldItems) graphic.Dispose();
-        //            break;
-        //     }
-        //}
         public bool CanStartSAAnalysis() {
             bool enoughVehiclesSelected = SelectedVehicles.Count > 0;
             bool mapPaneActive = FrameworkApplication.State.Contains(DAML.State.esri_mapping_mapPane);
@@ -569,7 +542,6 @@ namespace Esri.APL.MilesPerDollar {
             return oktoStartSAAnalysis;
         }
 
-        //TODO Blog about programmatic invocation of invisible MapTool
         string _previousActiveTool = null;
         private void StartSAAnalysis() {
             _previousActiveTool = FrameworkApplication.CurrentTool;
@@ -578,7 +550,8 @@ namespace Esri.APL.MilesPerDollar {
 
 
         internal async Task PerformAnalysis(MapPoint ptStartLoc, MapView mapView, ProgressorSource ps) {
-            ps.Message = "Gathering and verifying parameter data...";
+            ps.Progressor.Message = "Running the analysis...";
+            ps.Progressor.Status = "Gathering and verifying parameter data";
             string sReqUrl = Properties.Settings.Default.QryPointToState;
             string sReq = String.Format("{0}?returnGeometry=false&returnDistinctValues=false&geometry={1}&geometryType=esriGeometryPoint&f=json&outFields=*&spatialRel=esriSpatialRelIntersects",
                             sReqUrl, ptStartLoc.ToJson());
@@ -619,14 +592,13 @@ namespace Esri.APL.MilesPerDollar {
                 return ptNoZ;
             });
 
-            // No corresponding type for the needed GPFeatureRecordSetLayer parameter!
-            //TODO blog about handling REST GP service parameter itypes
+            // No corresponding type for the needed GPFeatureRecordSetLayer parameter
             string sStartGeom = ptStartLocNoZ.ToJson();
             string sStartLocParam = "{\"geometryType\":\"esriGeometryPoint\",\"features\":[{\"geometry\":" + sStartGeom + "}]}";
 
 
             // Run the query
-            ps.Message = "Running the drive distance analysis...";
+            ps.Progressor.Status = "Executing the analysis";
             string sGPUrl = Properties.Settings.Default.GPFindSA;
             sGPUrl += String.Format("?Distances={0}&Start_Location={1}&f=json", sDistsParam, sStartLocParam);
             HttpWebRequest reqSA = (HttpWebRequest)WebRequest.Create(sGPUrl);
@@ -642,9 +614,12 @@ namespace Esri.APL.MilesPerDollar {
                 return;
             }
 
+            // Show the results
+            ps.Progressor.Status = "Processing the results";
+
             using (StreamReader sread = new StreamReader(wr.GetResponseStream()))
-            sResp = sread.ReadToEnd();
-            
+                sResp = sread.ReadToEnd();
+
             JObject respAnalysis = JObject.Parse(sResp);
 
             JArray feats = respAnalysis["results"][0]["value"]["features"] as JArray;
@@ -658,13 +633,8 @@ namespace Esri.APL.MilesPerDollar {
                 return srTemp;
             });
 
-            // Dispose all graphics before calling DriveDistPolys.Clear(); 
-            foreach (Result result in Results) {
-                result.DriveServiceAreaGraphic?.Dispose();
-                result.DriveCircularBoundGraphic?.Dispose();
-            }
-
-            /*lock (_lockResults)*/ Results.Clear();
+            /*lock (_lockResults)*/
+            Results.ClearResults();
 
             // Iterate backwards to add larger polygons behind smaller ones
 
@@ -701,7 +671,8 @@ namespace Esri.APL.MilesPerDollar {
                 result.DriveServiceArea = poly;
                 result.DriveServiceAreaGraphic = graphic;
                 result.DriveDistM = aryResFeats[iVeh]["attributes"]["ToBreak"].Value<double>();
-                /*lock (_lockResults)*/ Results.Add(result);
+                /*lock (_lockResults)*/
+                Results.Add(result);
             }
         }
 
@@ -730,7 +701,7 @@ namespace Esri.APL.MilesPerDollar {
                     aryResFeats.Insert(iCurrentResultPosition, duplicatedResult);
                     resultsDuplicatedSoFar++;
                 }
-        }
+            }
             return aryResFeats;
         }
         #endregion
@@ -774,6 +745,21 @@ namespace Esri.APL.MilesPerDollar {
         }
         #endregion
     }
+
+    #region Extension Methods
+    /// <summary>
+    /// Dispose of all polygon drive and circular bound graphics before clearing results
+    /// </summary>
+    internal static class ResultsExtensions {
+        internal static void ClearResults(this ObservableCollection<Result> results) {
+            foreach (Result result in results) {
+                result.DriveServiceAreaGraphic?.Dispose();
+                result.DriveCircularBoundGraphic?.Dispose();
+            }
+            results.Clear();
+        }
+    }
+    #endregion
 
     /// <summary>
     /// Button implementation to show the DockPane.

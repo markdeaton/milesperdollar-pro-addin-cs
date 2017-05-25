@@ -1,5 +1,4 @@
 ﻿#region Helper Classes
-//TODO blog about PropertyChangedBase for color binding
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Framework.Contracts;
 using System;

@@ -23,7 +23,11 @@ namespace Esri.APL.MilesPerDollar {
             InitializeComponent();
         }
 
-        private void Image_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) {
+        private void AboutFuelPriceData_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) {
+            System.Diagnostics.Process.Start("https://www.eia.gov/petroleum/");
+        }
+
+        private void AboutVehicleData_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) {
             System.Diagnostics.Process.Start("http://www.fueleconomy.gov/feg/info.shtml");
         }
     }

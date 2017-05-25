@@ -1,16 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ArcGIS.Core.Geometry;
-using ArcGIS.Desktop.Mapping;
-using ArcGIS.Desktop.Framework;
-using ArcGIS.Desktop.Framework.Contracts;
-using System.Net;
-using System.IO;
-using Newtonsoft.Json;
+﻿using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
+using ArcGIS.Desktop.Mapping;
+using System;
+using System.Threading.Tasks;
 
 namespace Esri.APL.MilesPerDollar {
     internal class MPDSATool : MapTool {
