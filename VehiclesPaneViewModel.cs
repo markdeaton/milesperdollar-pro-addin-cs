@@ -349,7 +349,6 @@ namespace Esri.APL.MilesPerDollar {
                         } catch (GeodatabaseException) {
                             // Create results feature class
                             pd = new ProgressDialog("Creating feature class..."); pd.Show();
-                            //string sTemplatePath = Path.Combine(Environment.CurrentDirectory, @"Resources\Template.gdb\MilesPerDollar_template");
                             string sTemplatePath = Path.Combine(
                                 System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),
                                 @"Resources\Template.gdb\MilesPerDollar_template");

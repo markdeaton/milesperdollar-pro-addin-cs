@@ -320,6 +320,10 @@
   <ItemGroup>
     <Resource Include="Images\about24x24.png" />
   </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\AddInIcon16.png" />
+    <AddInContent Include="Images\AddInIcon32.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:
