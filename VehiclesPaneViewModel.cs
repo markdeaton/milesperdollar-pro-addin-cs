@@ -334,38 +334,42 @@ namespace Esri.APL.MilesPerDollar {
         public void SaveResults() {
             // Check for a feature layer connected to a feature class with the right name, type, etc.
             QueuedTask.Run(async () => {
-                ProgressDialog pd;
-                Geodatabase fgdb = null;
-                try {
-                    string resultFcName = Properties.Settings.Default.ResultFeatureClassName;
-                    List<FeatureLayer> featureLayers = MapView.Active.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
-                    FeatureLayer flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName);
-                    FeatureClass fc = null;
+            ProgressDialog pd;
+            Geodatabase fgdb = null;
+            try {
+                string resultFcName = Properties.Settings.Default.ResultFeatureClassName;
+                List<FeatureLayer> featureLayers = MapView.Active.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
+                FeatureLayer flResults = featureLayers.Find(lyr => lyr.GetFeatureClass().GetName() == resultFcName);
+                FeatureClass fc = null;
 
-                    if (flResults == null) {
-                        // Look for a FC to connect it to
-                        string defFgdbPath = Project.Current.DefaultGeodatabasePath;
+                if (flResults == null) {
+                    // Look for a FC to connect it to
+                    string defFgdbPath = Project.Current.DefaultGeodatabasePath;
+                    try {
+                        fgdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(defFgdbPath)));
+                        IReadOnlyList<string> gpParams;
                         try {
-                            fgdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(defFgdbPath)));
-                            IReadOnlyList<string> gpParams;
-                            try {
-                                fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
-                            } catch (GeodatabaseException) {
-                                // Create results feature class
-                                pd = new ProgressDialog("Creating feature class..."); pd.Show();
-                                string sTemplatePath = Path.Combine(Environment.CurrentDirectory, @"Resources\Template.gdb\MilesPerDollar_template");
-                                gpParams = Geoprocessing.MakeValueArray(
-                                    defFgdbPath, resultFcName, "POLYGON", sTemplatePath, null, null,
-                                    SpatialReferenceBuilder.CreateSpatialReference(Properties.Settings.Default.ResultFeatureClassSRWkid));
-                                IGPResult resCreateFC = await Geoprocessing.ExecuteToolAsync("management.CreateFeatureclass", gpParams, flags:GPExecuteToolFlags.None);
-                                if (resCreateFC.IsFailed) {
-                                    List<string> errMsgs = resCreateFC.ErrorMessages.Select(errMsg => errMsg.Text).ToList();
-                                    string sErrMsgs = String.Join("\n", errMsgs);
-                                    throw new Exception("Error creating results feature class:" + sErrMsgs);
-                                }
+                            fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
+                        } catch (GeodatabaseException) {
+                            // Create results feature class
+                            pd = new ProgressDialog("Creating feature class..."); pd.Show();
+                            //string sTemplatePath = Path.Combine(Environment.CurrentDirectory, @"Resources\Template.gdb\MilesPerDollar_template");
+                            string sTemplatePath = Path.Combine(
+                                System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),
+                                @"Resources\Template.gdb\MilesPerDollar_template");
+                            gpParams = Geoprocessing.MakeValueArray(
+                                defFgdbPath, resultFcName, "POLYGON", sTemplatePath, null, null,
+                                SpatialReferenceBuilder.CreateSpatialReference(Properties.Settings.Default.ResultFeatureClassSRWkid));
+                            IGPResult resCreateFC = await Geoprocessing.ExecuteToolAsync("management.CreateFeatureclass", gpParams, flags: GPExecuteToolFlags.None);
+                            if (resCreateFC.IsFailed) {
                                 pd.Hide();
-                                fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
+                                List<string> errMsgs = resCreateFC.ErrorMessages.Select(errMsg => errMsg.Text).ToList();
+                                string sErrMsgs = String.Join("\n", errMsgs);
+                                throw new Exception("Error creating results feature class:" + sErrMsgs);
                             }
+                            pd.Hide();
+                            fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
+                        }
                         } catch (Exception e) {
                             throw new Exception("Error opening or creating feature class", e);
                         }
