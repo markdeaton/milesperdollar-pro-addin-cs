@@ -1,6 +1,6 @@
 ﻿<ArcGIS defaultAssembly="Esri.APL.MilesPerDollar.dll" defaultNamespace="Esri.APL.MilesPerDollar" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///E:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
   <AddInInfo id="{500ff634-dd1f-4962-8baa-77f8dc37040d}" version="1.0" desktopVersion="1.4.7198">
-    <Name>mpd_pro_addin_cs</Name>
+    <Name>Miles per Dollar</Name>
     <Description>How Far Can I Drive on a Buck? (For ArcGIS Pro v1.4 and 1.4.1.)</Description>
     <Image>Images\AddinDesktop32.png</Image>
     <Author>Mark Deaton</Author>
