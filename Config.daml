@@ -1,11 +1,11 @@
 ﻿<ArcGIS defaultAssembly="Esri.APL.MilesPerDollar.dll" defaultNamespace="Esri.APL.MilesPerDollar" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///E:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
   <AddInInfo id="{500ff634-dd1f-4962-8baa-77f8dc37040d}" version="1.0" desktopVersion="2.0.0">
-    <Name>mpd_pro_addin_cs</Name>
-    <Description>How Far Can I Drive on a Buck?</Description>
+    <Name>Miles per Dollar</Name>
+    <Description>How Far Can I Drive on a Buck? (For ArcGIS Pro v2.0.)</Description>
     <Image>Images\AddinDesktop32.png</Image>
-    <Author>mark4238</Author>
+    <Author>Mark Deaton</Author>
     <Company>Esri APL</Company>
-    <Date>4/21/2017 2:52:34 PM, 2017</Date>
+    <Date>5/26/2017</Date>
     <Subject>Framework</Subject>
     <!-- Note subject can be one or more of these topics:
                     Content, Framework, Editing, Geodatabase, Geometry, Geoprocessing, Layouts, Map Authoring, Map Exploration -->
