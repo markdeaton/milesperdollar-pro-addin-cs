@@ -31,7 +31,7 @@
         <!-- add your controls here -->
         <button id="Esri_APL_MilesPerDollar_VehiclesPane_ShowButton" caption="Miles per Dollar" className="VehiclesPane_ShowButton" loadOnClick="true" 
                 smallImage="Images\AddInIcon16.png" largeImage="Images\AddInIcon32.png">
-          <tooltip heading="Show Dockpane">How far can you drive on a dollar? Pick a vehicle and a starting point and find out.<disabledText /></tooltip>
+          <tooltip heading="Miles per Dollar">How far can you drive on a dollar? Pick a vehicle and a starting point and find out.<disabledText /></tooltip>
         </button>
         <tool id="Esri_APL_MilesPerDollar_MPDSATool" caption="MPD Tool" className="MPDSATool" loadOnClick="true" 
               smallImage="Images\GenericButtonRed16.png" largeImage="Images\GenericButtonRed32.png" condition="mpd_allow_find_servicearea_condition">
