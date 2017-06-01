@@ -9,7 +9,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Esri.APL.MilesPerDollar</RootNamespace>
-    <AssemblyName>Esri.APL.MilesPerDollar.141</AssemblyName>
+    <AssemblyName>Esri.APL.MilesPerDollar</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -312,13 +312,13 @@
     <Resource Include="Resources\States2PADD.xml" />
   </ItemGroup>
   <ItemGroup>
-    <AddInContent Include="Images\George.png" />
+    <Resource Include="Images\George.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\vehicle-feather20.png" />
   </ItemGroup>
   <ItemGroup>
-    <AddInContent Include="Images\about24x24.png" />
+    <Resource Include="Images\about24x24.png" />
   </ItemGroup>
   <ItemGroup>
     <AddInContent Include="Images\AddInIcon16.png" />
