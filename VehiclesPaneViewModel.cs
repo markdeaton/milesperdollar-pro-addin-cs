@@ -284,8 +284,12 @@ namespace Esri.APL.MilesPerDollar {
                 GetStatesPerPADDZone();
                 // Prepopulate years dropdown
                 GetVehicleYears();
+            } catch (AggregateException e) {
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error during initialization: " + e.Message + "\n\n" +
+                    "Please close and restart ArcGIS Pro to try again.");
             } catch (Exception e) {
-                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error during initialization: " + e.Message);
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error during initialization: " + e.Message + "\n\n" +
+                    "Please close and restart ArcGIS Pro to try again.");
             }
             return base.InitializeAsync();
         }
