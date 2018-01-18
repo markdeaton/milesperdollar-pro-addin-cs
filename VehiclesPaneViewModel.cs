@@ -622,6 +622,14 @@ namespace Esri.APL.MilesPerDollar {
 
             JObject respAnalysis = JObject.Parse(sResp);
 
+            // If we received a server error, show it and abort
+            if (respAnalysis.First.Path.Equals("error")) {
+                JToken err = respAnalysis.First;
+                string sMsg = err.First["message"].ToString();
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(sMsg);
+                return;
+            }
+
             JArray feats = respAnalysis["results"][0]["value"]["features"] as JArray;
 
             // Rectify results and order so that largest polygon can be added to the map first
