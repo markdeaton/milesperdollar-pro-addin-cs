@@ -280,8 +280,12 @@ namespace Esri.APL.MilesPerDollar {
                 GetStatesPerPADDZone();
                 // Prepopulate years dropdown
                 GetVehicleYears();
+            } catch (AggregateException e) {
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error during initialization: " + e.Message + "\n\n" +
+                    "Please close and restart ArcGIS Pro to try again.");
             } catch (Exception e) {
-                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error during initialization: " + e.Message);
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Error during initialization: " + e.Message + "\n\n" +
+                    "Please close and restart ArcGIS Pro to try again.");
             }
             return base.InitializeAsync();
         }
@@ -348,8 +352,7 @@ namespace Esri.APL.MilesPerDollar {
                             fc = fgdb.OpenDataset<FeatureClass>(resultFcName);
                         } catch (GeodatabaseException) {
                             // Create results feature class
-                            pd = new ProgressDialog("Creating feature class..."); pd.Show();
-                            //string sTemplatePath = Path.Combine(Environment.CurrentDirectory, @"Resources\Template.gdb\MilesPerDollar_template");
+                            pd = new ProgressDialog("Creating results feature class..."); pd.Show();
                             string sTemplatePath = Path.Combine(
                                 System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),
                                 @"Resources\Template.gdb\MilesPerDollar_template");
